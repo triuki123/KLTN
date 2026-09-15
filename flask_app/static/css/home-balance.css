@@ -63,7 +63,7 @@ body[data-page="home"] .home-chips { flex-wrap:wrap; overflow:visible; padding-b
 body[data-page="home"] .home-chip { padding:13px 19px; box-shadow:0 8px 24px rgba(17,41,31,.055); }
 .home-section-v2 .book-card,.home-category-card { box-shadow:0 18px 44px rgba(17,41,31,.07); }
 
-#home-books { display:grid!important; grid-auto-flow:row!important; grid-auto-columns:unset!important; grid-template-columns:repeat(5,minmax(0,1fr))!important; overflow:visible!important; gap:18px!important; padding:5px 0 12px!important; scroll-snap-type:none!important; }
+#home-books { display:grid!important; grid-auto-flow:row!important; grid-auto-columns:unset!important; grid-template-columns:repeat(4,minmax(0,1fr))!important; overflow:visible!important; gap:20px!important; padding:5px 0 12px!important; scroll-snap-type:none!important; }
 #home-books .book-card { min-width:0; scroll-snap-align:none!important; }
 .rail-hint { display:none; }
 .quick-book-info>b { display:inline-block; margin-right:7px; }
@@ -77,10 +77,14 @@ body[data-page="home"] .home-service-inner div:last-child { border:0; }
 body[data-page="home"] .home-service-inner b { display:block; margin-bottom:5px; color:#fffaf0; font-size:13px; }
 body[data-page="home"] .home-service-inner span { color:rgba(255,250,240,.68); font-size:11px; }
 
+#home-cart-toast { position:fixed; right:24px; bottom:24px; z-index:120; width:min(330px,calc(100vw - 32px)); padding:0 18px; border-radius:16px; background:#11291f; color:#fffaf0; box-shadow:0 18px 42px rgba(17,41,31,.24); opacity:0; pointer-events:none; transform:translateY(16px) scale(.98); transition:opacity 180ms var(--ease-out),transform 180ms var(--ease-out),padding 180ms var(--ease-out); }
+#home-cart-toast:not(:empty) { padding:16px 18px; opacity:1; pointer-events:auto; transform:none; }
 #home-cart-toast b,#home-cart-toast span,#home-cart-toast a { display:block; }
 #home-cart-toast b { margin-bottom:4px; font-size:14px; }
 #home-cart-toast span { overflow:hidden; margin-bottom:9px; color:#d9e8e0; font-size:11px; white-space:nowrap; text-overflow:ellipsis; }
 #home-cart-toast a { color:#f2ce81; font-size:11px; font-weight:800; }
+#home-cart-toast.error { background:#8f392b; }
+@media(max-width:700px) { #home-cart-toast { right:16px; bottom:78px; } }
 
 @media(max-width:1050px) { #home-books { grid-template-columns:repeat(4,minmax(0,1fr))!important; } }
 @media(max-width:900px) { .home-hero-inner{grid-template-columns:1fr}.home-hero-books{display:none}.home-service-inner{grid-template-columns:repeat(2,1fr)} }

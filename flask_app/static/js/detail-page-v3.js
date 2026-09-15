@@ -52,7 +52,7 @@
             <div class="detail-meta">${metadata(book)}</div>
             <div class="detail-price-line">${priceMarkup}</div>
             ${hasCoupon ? `<p class="detail-coupon-hint">Giá ưu đãi khi nhập mã <b>${esc(book.coupon.code)}</b>${Number(book.coupon.minimumOrder) > Number(book.price) ? ` · Đơn tối thiểu ${money(book.coupon.minimumOrder)}` : ''}</p>` : ''}
-            <div class="detail-purchase-row"><div class="detail-quantity" aria-label="Chọn số lượng"><button id="quantity-minus" type="button">−</button><strong id="quantity-value">1</strong><button id="quantity-plus" type="button">+</button></div><button id="add-cart" class="pill light" ${available ? '' : 'disabled'}>Thêm vào giỏ hàng</button><button id="buy-now" class="btn-brand" ${available ? '' : 'disabled'}>Mua ngay</button><button id="add-favorite" class="pill light detail-favorite" aria-label="Lưu yêu thích">${icon('heart')}</button></div>
+            <div class="detail-purchase-row"><div class="detail-quantity" aria-label="Chọn số lượng"><button id="quantity-minus" type="button">−</button><strong id="quantity-value">1</strong><button id="quantity-plus" type="button">+</button></div><button id="add-cart" class="pill light" ${available ? '' : 'aria-disabled="true"'}>Thêm vào giỏ hàng</button><button id="buy-now" class="btn-brand" ${available ? '' : 'aria-disabled="true"'}>Mua ngay</button><button id="add-favorite" class="pill light detail-favorite" aria-label="Lưu yêu thích">${icon('heart')}</button></div>
             <div id="detail-message" aria-live="polite"></div>
             <div class="detail-services"><div><i class="icon-check">${icon('check')}</i><b>Giao hàng toàn quốc</b><span>Dự kiến từ 2–5 ngày</span></div><div><i class="icon-check">${icon('check')}</i><b>Miễn phí từ 299.000đ</b><span>Áp dụng theo giá trị đơn</span></div><div><i class="icon-check">${icon('check')}</i><b>Đổi trả trong 7 ngày</b><span>Khi sách có lỗi</span></div><div><i class="icon-check">${icon('check')}</i><b>Thanh toán linh hoạt</b><span>Hỗ trợ COD</span></div></div>
           </article>
@@ -71,7 +71,8 @@
 
     let quantity = 1;
     const quantityValue = document.querySelector('#quantity-value');
-    const updateQuantity = delta => { quantity = Math.max(1, Math.min(Number(book.stock || 1), quantity + delta)); quantityValue.textContent = quantity; };
+    const showOutOfStock = () => { document.querySelector('#detail-message').innerHTML = '<p class="message error" role="alert">Sản phẩm đã hết hàng. Vui lòng chọn sách khác hoặc quay lại sau.</p>'; };
+    const updateQuantity = delta => { if (!available) return showOutOfStock(); quantity = Math.max(1, Math.min(Number(book.stock || 1), quantity + delta)); quantityValue.textContent = quantity; };
     document.querySelector('#quantity-minus').onclick = () => updateQuantity(-1);
     document.querySelector('#quantity-plus').onclick = () => updateQuantity(1);
 
@@ -91,6 +92,7 @@
     }
 
     async function save(kind, next = '') {
+      if (!available) return showOutOfStock();
       try {
         await api(`/api/items/${kind}`, {method:'POST',body:JSON.stringify({workId:book.workId,quantity:kind === 'cart' ? quantity : 1,selected:Boolean(next)})});
         if (next) return location.assign(next);

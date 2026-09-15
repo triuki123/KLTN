@@ -84,7 +84,7 @@ def add_restored_admin_assets(response):
         # Dedicated screens do not load the legacy renderer, preventing UI flicker.
         admin_workspace = request.path.startswith("/admin") and request.path != "/admin/login"
         if request.path in ("/", "/books", "/categories", "/orders", "/account", "/checkout") or admin_workspace:
-            html = html.replace('<script src="/static/js/app.js"></script>', "")
+            html = re.sub(r'<script src="/static/js/app\.js[^"]*"></script>', "", html)
         html = re.sub(r"<nav>.*?</nav>", '<nav><a href="/">Trang chủ</a><a href="/books">Sách</a><a href="/categories">Danh mục</a></nav>', html, count=1)
         html = html.replace("</head>", '<link rel="stylesheet" href="/static/css/font-fix.css"></head>')
         if request.path == "/":
@@ -100,7 +100,7 @@ def add_restored_admin_assets(response):
         elif request.path == "/checkout":
             extra_scripts = '<script src="/static/js/checkout.js"></script><script src="/static/js/checkout-coupon.js?v=20260914-4"></script><script src="/static/js/storefront-sync.js"></script>'
         elif admin_workspace:
-            extra_scripts = '<script src="/static/js/admin-shell.js?v=20260914-2"></script><script src="/static/js/admin-shell-edit.js"></script><script src="/static/js/admin-book-fields.js"></script><script src="/static/js/admin-coupon-picker.js?v=20260914-3"></script><script src="/static/js/admin-cover-upload.js"></script>'
+            extra_scripts = '<script src="/static/js/admin-shell.js?v=20260914-2"></script><script src="/static/js/admin-shell-edit.js?v=20260915-2"></script><script src="/static/js/admin-book-fields.js"></script><script src="/static/js/admin-coupon-picker.js?v=20260914-3"></script><script src="/static/js/admin-cover-upload.js"></script>'
         else:
             extra_scripts = ''
         response.set_data(html.replace("</body>", extra_scripts + "</body>"))
@@ -349,29 +349,34 @@ def current_session(): return jsonify(success=True, data={"id":session.get("user
 
 @app.get("/api/home")
 def home_catalog():
-    """Fast MySQL-only catalogue for the home page; it never depends on Open Library."""
+    """Local inventory first (so coupons/prices show), Open Library fills the gap."""
     limit = min(max(int(request.args.get("limit", 8)), 1), 30)
+    local_rows = []
     con = db()
     try:
         with con.cursor() as cur:
-            cur.execute("""SELECT i.work_id,i.title,i.authors,i.cover_url,i.stock_quantity,i.sold_count,
-                i.selling_price,i.promotional_price,i.category_id,i.updated_at,
-                ac.code AS coupon_code,ac.discount_type AS coupon_discount_type,
-                ac.discount_value AS coupon_discount_value
-                FROM external_book_inventory i
-                LEFT JOIN (
-                    SELECT cp.work_id,c.code,c.discount_type,c.discount_value,
-                        ROW_NUMBER() OVER (PARTITION BY cp.work_id ORDER BY c.discount_value DESC,c.id DESC) AS priority
-                    FROM external_coupon_products cp
-                    JOIN coupons c ON c.id=cp.coupon_id
-                    WHERE c.status='ACTIVE' AND c.starts_at<=NOW() AND c.ends_at>=NOW()
-                        AND (c.usage_limit IS NULL OR c.used_count<c.usage_limit)
+            cur.execute("""SELECT i.work_id,i.title,i.authors,i.cover_url,i.stock_quantity,i.sold_count,i.selling_price,i.promotional_price,i.updated_at,
+                ac.code AS coupon_code,ac.discount_type AS coupon_discount_type,ac.discount_value AS coupon_discount_value
+                FROM external_book_inventory i LEFT JOIN (
+                    SELECT cp.work_id,c.code,c.discount_type,c.discount_value,ROW_NUMBER() OVER (PARTITION BY cp.work_id ORDER BY c.discount_value DESC,c.id DESC) priority
+                    FROM external_coupon_products cp JOIN coupons c ON c.id=cp.coupon_id
+                    WHERE c.status='ACTIVE' AND c.starts_at<=NOW() AND c.ends_at>=NOW() AND (c.usage_limit IS NULL OR c.used_count<c.usage_limit)
                 ) ac ON ac.work_id=i.work_id AND ac.priority=1
-                WHERE i.stock_quantity > 0 AND i.status='ACTIVE'
-                ORDER BY i.is_featured DESC,(i.cover_url IS NULL),i.sold_count DESC,i.updated_at DESC LIMIT %s""", (limit,))
-            return jsonify(success=True, data=[{k: json_value(v) for k, v in row.items()} for row in cur.fetchall()])
+                WHERE i.stock_quantity>0 AND i.status='ACTIVE' ORDER BY i.is_featured DESC,i.sold_count DESC,i.updated_at DESC LIMIT %s""", (limit,))
+            local_rows = [{**{k: json_value(v) for k, v in row.items()}, "source": "mysql"} for row in cur.fetchall()]
     finally:
         con.close()
+    remaining = max(limit - len(local_rows), 0)
+    if not remaining:
+        return jsonify(success=True, data=local_rows)
+    try:
+        response = openlibrary_get("https://openlibrary.org/search.json", params={"q": "language:vie", "limit": remaining, "fields": "key,title,author_name,cover_i,first_publish_year,edition_count"}, timeout=(3, 8))
+        response.raise_for_status()
+        docs = response.json().get("docs", [])
+        ol_rows = [{"work_id": str(book.get("key", "")).split("/")[-1], "title": book.get("title", "Không rõ tên"), "authors": ", ".join(book.get("author_name", [])) or "Chưa rõ tác giả", "cover_url": f"https://covers.openlibrary.org/b/id/{book['cover_i']}-L.jpg" if book.get("cover_i") else None, "stock_quantity": None, "sold_count": 0, "selling_price": None, "promotional_price": None, "source": "openlibrary"} for book in docs if book.get("key")]
+        return jsonify(success=True, data=local_rows + ol_rows)
+    except (requests.RequestException, ValueError):
+        return jsonify(success=True, data=local_rows)
 
 @app.get("/api/categories")
 def public_categories():
@@ -701,9 +706,10 @@ def get_book(work_id):
     desc=x.get("description",""); desc=desc.get("value","") if isinstance(desc,dict) else desc
     covers=x.get("covers",[]); con=db()
     try:
-        with con.cursor() as cur: cur.execute("SELECT stock_quantity,sold_count FROM external_book_inventory WHERE work_id=%s",(work_id,)); stock=cur.fetchone() or {"stock_quantity":0,"sold_count":0}
+        with con.cursor() as cur: cur.execute("SELECT stock_quantity,sold_count,selling_price,promotional_price FROM external_book_inventory WHERE work_id=%s",(work_id,)); stock=cur.fetchone()
     finally: con.close()
-    return jsonify(success=True,data={"workId":work_id,"title":x.get("title"),"authors":[a for a in authors if a],"description":desc or "Chưa có mô tả.","subjects":x.get("subjects",[])[:8],"cover":f"https://covers.openlibrary.org/b/id/{covers[0]}-L.jpg" if covers else None,"stock":stock["stock_quantity"],"sold":stock["sold_count"]})
+    remote=stock is None; stock=stock or {"stock_quantity":20,"sold_count":0,"selling_price":99000,"promotional_price":None}
+    return jsonify(success=True,data={"workId":work_id,"title":x.get("title"),"authors":[a for a in authors if a],"description":desc or "Chưa có mô tả.","subjects":x.get("subjects",[])[:8],"cover":f"https://covers.openlibrary.org/b/id/{covers[0]}-L.jpg" if covers else None,"stock":stock["stock_quantity"],"sold":stock["sold_count"],"price":stock["promotional_price"] or stock["selling_price"],"originalPrice":stock["selling_price"],"source":"openlibrary" if remote else "mysql"})
 
 @app.route("/api/books/<work_id>/reviews",methods=["GET","POST"])
 def external_book_reviews(work_id):
@@ -794,8 +800,25 @@ def items(kind):
     try:
         with con.cursor() as cur:
             if request.method=="POST":
-                x=request.get_json(); cur.execute("SELECT stock_quantity,selling_price,promotional_price,title,authors,cover_url,status FROM external_book_inventory WHERE work_id=%s",(x["workId"],)); stock=cur.fetchone()
-                if kind=="CART" and (not stock or stock["stock_quantity"]<1): return jsonify(success=False,message="Sách hiện đã hết hàng"),422
+                x=request.get_json() or {}; work_id=str(x.get("workId") or "").strip()
+                if not work_id:return jsonify(success=False,message="Mã sách không hợp lệ"),422
+                cur.execute("SELECT stock_quantity,selling_price,promotional_price,title,authors,cover_url,status FROM external_book_inventory WHERE work_id=%s",(work_id,)); stock=cur.fetchone()
+                if not stock:
+                    try:
+                        response=openlibrary_get(f"https://openlibrary.org/works/{work_id}.json",timeout=(3,8));response.raise_for_status();book=response.json()
+                        title=str(book.get("title") or "").strip();covers=book.get("covers") or []
+                        authors=[]
+                        for ref in book.get("authors",[])[:4]:
+                            key=(ref.get("author") or {}).get("key")
+                            if key:
+                                try:authors.append(str(openlibrary_get(f"https://openlibrary.org{key}.json",timeout=(2,5)).json().get("name") or "").strip())
+                                except (requests.RequestException,ValueError):pass
+                        if not title:return jsonify(success=False,message="Không tìm thấy sách từ Open Library"),404
+                        cover_url=f"https://covers.openlibrary.org/b/id/{covers[0]}-L.jpg" if covers else None
+                        cur.execute("INSERT INTO external_book_inventory(work_id,title,authors,cover_url,stock_quantity,minimum_stock,selling_price,status) VALUES(%s,%s,%s,%s,20,5,99000,'ACTIVE')",(work_id,title,", ".join(name for name in authors if name) or "Chưa rõ tác giả",cover_url))
+                        cur.execute("SELECT stock_quantity,selling_price,promotional_price,title,authors,cover_url,status FROM external_book_inventory WHERE work_id=%s",(work_id,));stock=cur.fetchone()
+                    except (requests.RequestException,ValueError):return jsonify(success=False,message="Không thể thêm sách từ Open Library lúc này"),503
+                if kind=="CART" and stock["stock_quantity"]<1: return jsonify(success=False,message="Sách hiện đã hết hàng"),422
                 if stock["status"]!='ACTIVE': return jsonify(success=False,message="Sản phẩm hiện không được bán"),422
                 try: quantity=max(1,int(x.get("quantity",1)))
                 except (TypeError,ValueError): quantity=1
@@ -803,7 +826,7 @@ def items(kind):
                 if kind!="CART":quantity=1
                 price=stock["promotional_price"] or stock["selling_price"]
                 selected=1 if kind=="CART" and bool(x.get("selected",False)) else 0
-                cur.execute("INSERT INTO external_book_items(user_id,work_id,kind,title,authors,cover_url,quantity,selected,unit_price) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s) ON DUPLICATE KEY UPDATE quantity=IF(kind='CART',LEAST(quantity+VALUES(quantity),%s),quantity),selected=IF(kind='CART',VALUES(selected),selected),unit_price=VALUES(unit_price)",(session["user_id"],x["workId"],kind,stock["title"],stock["authors"],stock["cover_url"],quantity,selected,price,stock["stock_quantity"] if stock else 1));con.commit()
+                cur.execute("INSERT INTO external_book_items(user_id,work_id,kind,title,authors,cover_url,quantity,selected,unit_price) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s) ON DUPLICATE KEY UPDATE quantity=IF(kind='CART',LEAST(quantity+VALUES(quantity),%s),quantity),selected=IF(kind='CART',VALUES(selected),selected),unit_price=VALUES(unit_price)",(session["user_id"],work_id,kind,stock["title"],stock["authors"],stock["cover_url"],quantity,selected,price,stock["stock_quantity"]));con.commit()
             selected_only=kind=="CART" and request.args.get("selected") in {"1","true"}
             selection_sql=" AND i.selected=TRUE" if selected_only else ""
             cur.execute(f"""SELECT i.*,COALESCE(s.stock_quantity,0) stock,
@@ -948,6 +971,12 @@ def cancel_my_order(order_id):
                 cur.execute("SELECT stock_quantity FROM external_book_inventory WHERE work_id=%s FOR UPDATE",(item["work_id"],));stock=cur.fetchone();before=stock["stock_quantity"] if stock else 0;after=before+item["quantity"]
                 cur.execute("UPDATE external_book_inventory SET stock_quantity=%s,sold_count=GREATEST(0,sold_count-%s) WHERE work_id=%s",(after,item["quantity"],item["work_id"]))
                 cur.execute("INSERT INTO external_inventory_transactions(work_id,transaction_type,quantity_change,quantity_before,quantity_after,reference_code,reason,created_by) VALUES(%s,'CANCEL_RETURN',%s,%s,%s,%s,'Khách hàng hủy đơn trước khi xác nhận',%s)",(item["work_id"],item["quantity"],before,after,order["order_code"],session["user_id"]))
+            cur.execute("SELECT coupon_id,coupon_code FROM external_orders WHERE id=%s",(order_id,));order_coupon=cur.fetchone()
+            if order_coupon and order_coupon["coupon_id"]:
+                cur.execute("SELECT id FROM external_coupon_usages WHERE coupon_id=%s AND order_id=%s LIMIT 1",(order_coupon["coupon_id"],order_id));usage=cur.fetchone()
+                if usage:
+                    cur.execute("DELETE FROM external_coupon_usages WHERE id=%s",(usage["id"],))
+                    cur.execute("UPDATE coupons SET used_count=GREATEST(0,used_count-1) WHERE id=%s",(order_coupon["coupon_id"],))
             cur.execute("UPDATE external_orders SET status='CANCELLED' WHERE id=%s",(order_id,))
             cur.execute("INSERT INTO external_order_status_history(order_id,status,note,changed_by) VALUES(%s,'CANCELLED','Khách hàng đã hủy đơn',%s)",(order_id,session["user_id"]))
         con.commit();return jsonify(success=True)
@@ -1094,6 +1123,7 @@ def admin_generic_create(module):
     if module=="coupons":
         try:
             code=str(x.get("code") or "").strip().upper();name=str(x.get("name") or "").strip();kind=str(x.get("discountType") or "PERCENT").upper();value=float(x.get("discountValue") or 0)
+            if kind=="FREE_SHIPPING":value=1
             if not code or not name or kind not in ("PERCENT","FIXED","FREE_SHIPPING") or (kind!="FREE_SHIPPING" and value<=0) or (kind=="PERCENT" and value>100):return jsonify(success=False,message="Thông tin mã giảm giá không hợp lệ."),422
             work_ids=[str(item).strip() for item in (x.get("workIds") or []) if str(item).strip()]
             if not work_ids:return jsonify(success=False,message="Hãy chọn ít nhất một sản phẩm được áp dụng."),422
@@ -1360,6 +1390,12 @@ def update_order(order_id):
                 for item in cur.fetchall():
                     cur.execute("SELECT stock_quantity FROM external_book_inventory WHERE work_id=%s FOR UPDATE",(item["work_id"],));before=cur.fetchone()["stock_quantity"];after=before+item["quantity"]
                     cur.execute("UPDATE external_book_inventory SET stock_quantity=%s,sold_count=GREATEST(0,sold_count-%s) WHERE work_id=%s",(after,item["quantity"],item["work_id"]));cur.execute("INSERT INTO external_inventory_transactions(work_id,transaction_type,quantity_change,quantity_before,quantity_after,reference_code,reason,created_by) VALUES(%s,'CANCEL_RETURN',%s,%s,%s,%s,'Hoàn kho do hủy đơn',%s)",(item["work_id"],item["quantity"],before,after,order["order_code"],session["user_id"]))
+                cur.execute("SELECT coupon_id FROM external_orders WHERE id=%s",(order_id,));order_coupon=cur.fetchone()
+                if order_coupon and order_coupon["coupon_id"]:
+                    cur.execute("SELECT id FROM external_coupon_usages WHERE coupon_id=%s AND order_id=%s LIMIT 1",(order_coupon["coupon_id"],order_id));usage=cur.fetchone()
+                    if usage:
+                        cur.execute("DELETE FROM external_coupon_usages WHERE id=%s",(usage["id"],))
+                        cur.execute("UPDATE coupons SET used_count=GREATEST(0,used_count-1) WHERE id=%s",(order_coupon["coupon_id"],))
             cur.execute("UPDATE external_orders SET status=%s WHERE id=%s",(status,order_id));con.commit();return jsonify(success=True)
     finally:con.close()
 

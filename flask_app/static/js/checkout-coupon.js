@@ -23,12 +23,16 @@
     try{const response=await fetch('/api/coupons/validate',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});const body=await response.json();if(!response.ok)throw new Error(body.message);applied=body.data;document.querySelector('#checkout-coupon-code').value=applied.code;document.querySelector('#remove-coupon').hidden=false;message.textContent=`Đang dùng ${applied.code}: tiết kiệm ${money(applied.discount)}`;message.className='success';render(applied)}catch(error){applied=null;document.querySelector('#checkout-coupon-code').value='';document.querySelector('#remove-coupon').hidden=true;message.textContent=error.message;message.className='error';document.querySelector('#checkout-discount').hidden=true}finally{button.disabled=false;button.textContent='Áp dụng'}};
   const render=data=>{const row=document.querySelector('#checkout-discount'),freeShip=data.discountType==='FREE_SHIPPING';row.hidden=false;row.querySelector('span').textContent=freeShip?'Miễn phí vận chuyển':'Giảm giá';row.querySelector('b').textContent=`−${money(data.discount)}`;document.querySelector('#checkout-shipping').textContent=data.shipping?'30.000đ':'Miễn phí';document.querySelector('#checkout-total').textContent=money(data.total);document.querySelector('#checkout-submit').textContent=`Xác nhận đặt hàng · ${money(data.total)}`};
   function removeCoupon(){
-    const baseTotal=applied?Number(applied.subtotal||0)+Number(applied.shipping||0):0;
     applied=null;sessionStorage.removeItem('cartCouponCode');
     document.querySelector('#coupon-code').value='';document.querySelector('#checkout-coupon-code').value='';
     document.querySelector('#remove-coupon').hidden=true;document.querySelector('#checkout-discount').hidden=true;
     document.querySelector('#coupon-message').textContent='Đã bỏ mã giảm giá.';document.querySelector('#coupon-message').className='';
-    document.querySelector('#checkout-total').textContent=money(baseTotal);document.querySelector('#checkout-submit').textContent=`Xác nhận đặt hàng · ${money(baseTotal)}`;
+    const subtotal=Number(document.querySelector('#checkout-subtotal').textContent.replace(/[^\d]/g,''))||0;
+    const shipping=subtotal>=299000?0:30000;
+    document.querySelector('#checkout-shipping').textContent=shipping?money(shipping):'Miễn phí';
+    const baseTotal=subtotal+shipping;
+    document.querySelector('#checkout-total').textContent=money(baseTotal);
+    document.querySelector('#checkout-submit').textContent=`Xác nhận đặt hàng · ${money(baseTotal)}`;
   }
   let couponsLoaded=false;
   async function toggleAvailable(){
