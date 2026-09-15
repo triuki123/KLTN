@@ -1,0 +1,221 @@
+@charset "UTF-8";
+
+/* ==========================================================================
+   TRẠM SÁCH — ULTIMATE PREMIUM DESIGN SYSTEM OVERLAY
+   ========================================================================== */
+
+:root {
+  --ink: #11291f;
+  --ink-light: #224234;
+  --rust: #bf5032;
+  --rust-hover: #d15939;
+  --gold: #d4a74e;
+  --gold-light: #f5e6be;
+  --paper: #f8f6f0;
+  --paper-card: #ffffff;
+  --line-subtle: rgba(17, 41, 31, 0.08);
+  --line-strong: rgba(17, 41, 31, 0.16);
+  --shadow-sm: 0 4px 14px rgba(17, 41, 31, 0.05);
+  --shadow-md: 0 12px 32px rgba(17, 41, 31, 0.09);
+  --shadow-lg: 0 24px 50px rgba(17, 41, 31, 0.14);
+  --shadow-3d: inset 5px 0 10px -2px rgba(0, 0, 0, 0.24), inset -1px 0 3px rgba(255, 255, 255, 0.35), 0 14px 35px rgba(17, 41, 31, 0.16);
+}
+
+/* Global Background Mesh Glow */
+body {
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(circle at 15% 12%, rgba(212, 167, 78, 0.07) 0%, transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(191, 80, 50, 0.06) 0%, transparent 45%);
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: 'Be Vietnam Pro', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Header Glassmorphism Upgrade */
+.site-header {
+  height: 86px;
+  background: rgba(248, 246, 240, 0.88) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-bottom: 1px solid var(--line-subtle) !important;
+  box-shadow: 0 8px 30px rgba(17, 41, 31, 0.06) !important;
+}
+
+.brand {
+  font-family: 'Lora', serif !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  transition: transform 0.2s ease;
+}
+.brand:hover {
+  transform: scale(1.02);
+}
+.brand span {
+  color: var(--rust) !important;
+  background: linear-gradient(135deg, #bf5032 0%, #e4bd70 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Search Bar Glow & Focus */
+.header-search, .home-search {
+  border: 1.5px solid rgba(17, 41, 31, 0.12) !important;
+  box-shadow: 0 6px 20px rgba(17, 41, 31, 0.05) !important;
+  transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s !important;
+}
+.header-search:focus-within, .home-search:focus-within {
+  border-color: var(--rust) !important;
+  box-shadow: 0 8px 28px rgba(191, 80, 50, 0.16), 0 0 0 4px rgba(191, 80, 50, 0.08) !important;
+  transform: translateY(-1px);
+}
+.header-search button, .home-search button {
+  background: linear-gradient(135deg, #11291f 0%, #224234 100%) !important;
+  transition: transform 0.2s, box-shadow 0.2s !important;
+}
+.header-search button:hover, .home-search button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(17, 41, 31, 0.3);
+}
+
+/* Navigation Pills */
+.site-header nav a, #account-nav a {
+  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+.site-header nav a:hover, #account-nav a:hover {
+  background: rgba(17, 41, 31, 0.08) !important;
+  color: var(--ink) !important;
+}
+.site-header nav a[aria-current="page"] {
+  background: var(--ink) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(17, 41, 31, 0.25);
+}
+
+/* Book Card 3D & Luxury Visual Polish */
+.book-card {
+  border-radius: 20px !important;
+  border: 1px solid rgba(17, 41, 31, 0.09) !important;
+  background: #ffffff !important;
+  box-shadow: var(--shadow-md) !important;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1) !important;
+  padding: 12px !important;
+  position: relative !important;
+}
+.book-card:hover {
+  transform: translateY(-8px) scale(1.01) !important;
+  box-shadow: 0 22px 48px rgba(17, 41, 31, 0.15) !important;
+}
+
+/* 3D Book Cover Effect */
+.book-card img, .cover-placeholder, .detail-cover, .related-card img {
+  border-radius: 14px !important;
+  box-shadow: var(--shadow-3d) !important;
+  transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+}
+.book-card:hover img, .book-card:hover .cover-placeholder {
+  box-shadow: inset 4px 0 8px -1px rgba(0, 0, 0, 0.2), 0 16px 36px rgba(17, 41, 31, 0.22) !important;
+}
+
+/* Book Badges */
+.book-badge {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 3;
+  padding: 5px 11px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  background: linear-gradient(135deg, #bf5032 0%, #d15939 100%);
+  box-shadow: 0 4px 12px rgba(191, 80, 50, 0.35);
+  backdrop-filter: blur(4px);
+}
+.book-badge.gold {
+  background: linear-gradient(135deg, #d4a74e 0%, #e4bd70 100%);
+  box-shadow: 0 4px 12px rgba(212, 167, 78, 0.35);
+  color: #11291f;
+}
+
+/* Typography & Titles */
+.book-card h3 {
+  font-family: 'Lora', serif !important;
+  font-size: 17px !important;
+  font-weight: 600 !important;
+  color: var(--ink) !important;
+  margin: 14px 4px 6px !important;
+  line-height: 1.35 !important;
+  transition: color 0.2s ease;
+}
+.book-card:hover h3 {
+  color: var(--rust) !important;
+}
+
+.book-card p {
+  color: #4d5b53 !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+}
+
+/* Hero Section V2 Enhancement */
+.home-hero-v2 {
+  background: linear-gradient(135deg, #f8f6f0 0%, #f3eee3 50%, #eae1cf 100%) !important;
+  border-bottom: 1px solid var(--line-subtle);
+}
+.home-hero-v2 h1 {
+  font-family: 'Lora', serif !important;
+  letter-spacing: -0.05em !important;
+}
+.home-hero-v2 h1 em {
+  background: linear-gradient(135deg, #bf5032 0%, #e4bd70 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-style: italic;
+}
+
+/* Primary Brand Buttons */
+.btn-brand, #buy-now, #mobile-buy-now {
+  background: linear-gradient(135deg, #bf5032 0%, #c85739 100%) !important;
+  box-shadow: 0 8px 24px rgba(191, 80, 50, 0.28) !important;
+  transition: transform 0.25s, box-shadow 0.25s !important;
+}
+.btn-brand:hover, #buy-now:hover, #mobile-buy-now:hover {
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 0 12px 32px rgba(191, 80, 50, 0.38) !important;
+}
+
+/* Announcement Bar */
+.announcement {
+  background: linear-gradient(90deg, #11291f 0%, #1e3f31 50%, #11291f 100%) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+  font-size: 12px !important;
+  padding: 10px !important;
+  box-shadow: 0 2px 10px rgba(17, 41, 31, 0.15);
+}
+
+/* Mobile Bottom Navigation Bar Touch Polish */
+@media (max-width: 760px) {
+  .mobile-bottom-nav {
+    background: rgba(248, 246, 240, 0.96) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    border-top: 1.5px solid rgba(17, 41, 31, 0.12) !important;
+    box-shadow: 0 -8px 30px rgba(17, 41, 31, 0.12) !important;
+  }
+
+  .mobile-nav-item.active, .mobile-nav-item[aria-current="page"] {
+    color: var(--rust) !important;
+  }
+}
+
+/* Skeleton Loading Shimmer Polish */
+.skeleton {
+  background: linear-gradient(90deg, #ece6d8 25%, #f7f3ea 37%, #ece6d8 63%) !important;
+  background-size: 200% 100% !important;
+  animation: skeleton-shimmer 1.4s infinite linear !important;
+}

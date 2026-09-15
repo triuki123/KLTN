@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if page == 'admin-login' %}&#272;&#259;ng nh&#7853;p qu&#7843;n tr&#7883; &middot; {% endif %}Tr&#7841;m S&#225;ch</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/favicon.svg') }}">
+  <meta name="theme-color" content="#1F3D2E">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20260915-400">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/icons.css') }}?v=20260915-400">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/motion-polish.css') }}?v=20260915-400">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/header-experience.css') }}?v=20260915-401">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/coupon-ribbon.css') }}?v=20260915-400">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/chat-widget.css') }}?v=20260915-400">
+  {% if module == 'orders' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-orders.css') }}?v=20260915-400"><link rel="stylesheet" href="{{ url_for('static', filename='css/admin-orders-collapse.css') }}?v=20260915-400">{% endif %}
+  {% if module == 'reports' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-reports.css') }}?v=20260915-400">{% endif %}
+  {% if module == 'coupons' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-coupon-picker.css') }}?v=20260915-400"><link rel="stylesheet" href="{{ url_for('static', filename='css/admin-coupon-picker-fix.css') }}?v=20260915-400">{% endif %}
+  {% if page == 'home' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/home-experience.css') }}?v=20260915-401"><link rel="stylesheet" href="{{ url_for('static', filename='css/home-balance.css') }}?v=20260915-400"><link rel="stylesheet" href="{{ url_for('static', filename='css/home-quick-actions.css') }}?v=20260915-400">{% endif %}
+  {% if page == 'orders' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/orders-experience.css') }}?v=20260915-400"><link rel="stylesheet" href="{{ url_for('static', filename='css/orders-workflow.css') }}?v=20260915-400">{% endif %}
+  {% if page == 'account' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}?v=20260915-400"><link rel="stylesheet" href="{{ url_for('static', filename='css/account-extra.css') }}?v=20260915-400">{% endif %}
+  {% if page == 'checkout' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/checkout.css') }}?v=20260915-400"><link rel="stylesheet" href="{{ url_for('static', filename='css/checkout-addresses.css') }}?v=20260915-400">{% endif %}
+  {% if page == 'checkout' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/checkout-coupon.css') }}?v=20260915-400"><link rel="stylesheet" href="{{ url_for('static', filename='css/checkout-polish.css') }}?v=20260915-400">{% endif %}
+  {% if page == 'cart' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/cart-quantity.css') }}?v=20260915-400"><link rel="stylesheet" href="{{ url_for('static', filename='css/cart-summary.css') }}?v=20260915-400">{% endif %}
+  {% if page == 'detail' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/detail-actions.css') }}?v=20260915-400">{% endif %}
+  {% if page == 'admin-login' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-login.css') }}?v=20260915-400">{% endif %}
+  {% if page in ['login', 'forgot-password', 'reset-password'] %}<link rel="stylesheet" href="{{ url_for('static', filename='css/password-recovery.css') }}?v=20260915-400">{% endif %}
+</head>
+<body class="{% if page == 'admin-login' %}admin-login-body{% endif %}" data-page="{{ page }}" data-work-id="{{ work_id|default('') }}" data-module="{{ module|default('') }}">
+{% if page == 'admin-login' %}
+  <main id="app" class="admin-login-page" aria-live="polite">
+    <div class="loading">&#272;ang t&#7843;i m&#224;n h&#236;nh &#273;&#259;ng nh&#7853;p&hellip;</div>
+  </main>
+  <script src="{{ url_for('static', filename='js/admin-login.js') }}"></script>
+{% else %}
+  <div class="announcement">Mi&#7877;n ph&#237; v&#7853;n chuy&#7875;n cho &#273;&#417;n t&#7915; 299.000&#273; &middot; &#272;&#7893;i tr&#7843; trong 7 ng&#224;y</div>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Tr&#7841;m S&#225;ch — Trang ch&#7911;">
+      <img class="brand-logo-img" src="/static/icons/logo.svg" alt="Tr&#7841;m S&#225;ch" width="150" height="46">
+      <span class="brand-tagline">D&#7915;ng l&#7841;i<br>&#272;&#7885;c xa h&#417;n</span>
+    </a>
+    <nav><a href="/">Trang ch&#7911;</a><a href="/books">S&#225;ch</a><a href="/categories">Danh m&#7909;c</a></nav>
+    <form class="header-search" id="header-search" action="/books" method="get" role="search">
+      <input name="q" type="search" aria-label="T&#236;m ki&#7871;m s&#225;ch" placeholder="T&#236;m t&#234;n s&#225;ch, t&#225;c gi&#7843;&hellip;" autocomplete="off">
+      <button type="submit" aria-label="T&#236;m ki&#7871;m">&#9906;</button>
+    </form>
+    <div id="account-nav"><a href="/login">&#272;&#259;ng nh&#7853;p</a><a class="cart" href="/cart">Gi&#7887; h&#224;ng</a></div>
+    <button class="header-hamburger" id="header-hamburger" type="button" aria-label="M&#7903; menu"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>
+  </header>
+  <main id="app">
+    <div class="skeleton-grid">
+      <div class="skeleton-card"><div class="skeleton skeleton-cover"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div>
+      <div class="skeleton-card"><div class="skeleton skeleton-cover"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div>
+      <div class="skeleton-card"><div class="skeleton skeleton-cover"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div>
+      <div class="skeleton-card"><div class="skeleton skeleton-cover"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></div>
+    </div>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img class="footer-logo-img" src="/static/icons/logo.svg" alt="Tr&#7841;m S&#225;ch" width="150" height="46">
+        <p class="footer-tagline">Kh&#244;ng gian s&#225;ch v&#224; tri th&#7913;c<br>d&#224;nh cho ng&#432;&#7901;i Vi&#7879;t.</p>
+        <blockquote class="footer-quote">
+          &#8220;M&#7895;i cu&#7889;n s&#225;ch l&#224; m&#7897;t tr&#7841;m d&#7915;ng,<br>cho m&#7897;t h&#224;nh tr&#236;nh l&#7899;n h&#417;n.&#8221;
+          <cite>TR&#7840;M S&#193;CH</cite>
+        </blockquote>
+      </div>
+      <div class="footer-col">
+        <h4>Kh&#225;m ph&#225;</h4>
+        <a href="/">Trang ch&#7911;</a>
+        <a href="/books">T&#7845;t c&#7843; s&#225;ch</a>
+        <a href="/categories">Danh m&#7909;c</a>
+        <a href="/books?sort=popular">B&#225;n ch&#7841;y</a>
+        <a href="/books?sort=newest">S&#225;ch m&#7899;i</a>
+      </div>
+      <div class="footer-col">
+        <h4>H&#7895; tr&#7907;</h4>
+        <a href="/cart">Gi&#7887; h&#224;ng</a>
+        <a href="/orders">&#272;&#417;n h&#224;ng</a>
+        <a href="/account">T&#224;i kho&#7843;n</a>
+        <a href="#">Ch&#237;nh s&#225;ch v&#7853;n chuy&#7875;n</a>
+        <a href="#">&#272;&#7893;i tr&#7843; &amp; Ho&#224;n ti&#7873;n</a>
+      </div>
+      <div class="footer-col">
+        <h4>Li&#234;n h&#7879;</h4>
+        <a href="#">&#128222; 1800 TRAM SACH</a>
+        <a href="#">&#128140; support@tramsach.vn</a>
+        <a href="#">&#128205; TP. H&#7891; Ch&#237; Minh</a>
+        <a href="#">Facebook</a>
+        <a href="#">Instagram</a>
+      </div>
+    </div>
+    <div class="footer-services">
+      <div class="footer-service-item">
+        <div class="footer-service-icon">&#128218;</div>
+        <span>H&#417;n 10.000 &#273;&#7847;u s&#225;ch</span>
+      </div>
+      <div class="footer-service-item">
+        <div class="footer-service-icon">&#128666;</div>
+        <span>Giao to&#224;n qu&#7889;c</span>
+      </div>
+      <div class="footer-service-item">
+        <div class="footer-service-icon">&#128260;</div>
+        <span>&#272;&#7893;i tr&#7843; trong 7 ng&#224;y</span>
+      </div>
+      <div class="footer-service-item">
+        <div class="footer-service-icon">&#128274;</div>
+        <span>Thanh to&#225;n b&#7843;o m&#7853;t</span>
+      </div>
+      <div class="footer-service-item">
+        <div class="footer-service-icon">&#128142;</div>
+        <span>Mi&#7877;n ph&#237; t&#7915; 299k</span>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      &copy; 2026 Tr&#7841;m S&#225;ch &middot; D&#7915;ng l&#7841;i &middot; &#272;&#7885;c xa h&#417;n
+    </div>
+  </footer>
+  <div class="mobile-drawer-backdrop" id="mobile-drawer-backdrop"></div>
+  <aside class="mobile-drawer" id="mobile-drawer" aria-label="Menu di &#273;&#7897;ng">
+    <div class="mobile-drawer-header">
+      <h3>TR&#7840;M S&#193;CH</h3>
+      <button class="mobile-drawer-close" id="mobile-drawer-close" aria-label="&#272;&#243;ng menu">&times;</button>
+    </div>
+    <div class="mobile-drawer-nav">
+      <a href="/">Trang ch&#7911;</a>
+      <a href="/books">T&#7845;t c&#7843; s&#225;ch</a>
+      <a href="/categories">Danh m&#7909;c s&#225;ch</a>
+    </div>
+    <div id="drawer-account-section" style="margin-top:auto;padding-top:16px;border-top:1px solid rgba(17,41,31,0.12);">
+      <a href="/login" class="btn-brand" style="display:block;text-align:center;">&#272;&#259;ng nh&#7853;p</a>
+    </div>
+  </aside>
+  <nav class="mobile-bottom-nav" aria-label="&#272;i&#7873;u h&#432;&#7899;ng di &#273;&#7897;ng">
+    <a href="/" class="mobile-nav-item">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Trang ch&#7911;</span>
+    </a>
+    <a href="/books" class="mobile-nav-item">
+      <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <span>S&#225;ch</span>
+    </a>
+    <a href="/cart" class="mobile-nav-item">
+      <svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+      <span id="mobile-cart-badge" class="mobile-cart-badge" hidden></span>
+      <span>Gi&#7887; h&#224;ng</span>
+    </a>
+    <a href="/orders" class="mobile-nav-item">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>&#272;&#417;n h&#224;ng</span>
+    </a>
+    <a href="/account" class="mobile-nav-item">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>T&#220;i kho&#7843;n</span>
+    </a>
+  </nav>
+  {% if page not in ['detail', 'home'] %}<script src="{{ url_for('static', filename='js/app.js') }}?v=20260915-302"></script>{% endif %}
+  {% if page == 'detail' %}<script src="{{ url_for('static', filename='js/detail-page-v3.js') }}?v=20260915-300"></script>{% endif %}
+  <script src="{{ url_for('static', filename='js/header-experience.js') }}?v=20260915-301"></script>
+  <script src="{{ url_for('static', filename='js/chat-widget.js') }}?v=20260915-300"></script>
+  {% if module == 'orders' %}<script src="{{ url_for('static', filename='js/admin-orders-collapse.js') }}?v=20260915-300"></script>{% endif %}
+  {% if page == 'home' %}<script src="{{ url_for('static', filename='js/home-page-v2.js') }}?v=20260915-301"></script>{% endif %}
+  {% if page == 'cart' %}<script src="{{ url_for('static', filename='js/cart-summary.js') }}?v=20260915-300"></script>{% endif %}
+  {% if page == 'orders' %}<script src="{{ url_for('static', filename='js/orders-workflow.js') }}?v=20260915-300"></script>{% endif %}
+  {% if page in ['login', 'forgot-password', 'reset-password'] %}<script src="{{ url_for('static', filename='js/password-recovery.js') }}?v=20260915-300"></script>{% endif %}
+{% endif %}
+</body>
+</html>

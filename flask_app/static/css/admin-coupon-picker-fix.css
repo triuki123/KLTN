@@ -1,0 +1,4 @@
+.coupon-picker-item[hidden]{display:none!important}
+.coupon-picker-item.is-assigned{opacity:.48;cursor:not-allowed;background:#eee}
+.coupon-picker-item.is-assigned:hover{border-color:transparent}
+.coupon-picker-item.is-assigned i{background:#ddd}

@@ -1,0 +1,472 @@
+@charset "UTF-8";
+
+/* ==========================================================================
+   TRẠM SÁCH — BRAND IDENTITY SYSTEM (Synced với Brand Guide chính thức)
+   ========================================================================== */
+
+/* ── 1. BRAND COLOR TOKENS (Brand Guide exact) ───────────────────────── */
+:root {
+  --ink:         #1F3D2E;   /* Xanh rừng – primary */
+  --ink-medium:  #2d5040;
+  --rust:        #C65A3A;   /* Đất ấm – accent */
+  --rust-light:  rgba(198,90,58,.12);
+  --gold:        #D9C9B4;   /* Nâu giấy – secondary accent */
+  --gold-warm:   #c9a96e;
+  --paper:       #F7F3E9;   /* Kem giấy – background */
+  --paper-card:  #FFFFFF;
+  --brown-dark:  #3A2F27;   /* Nâu đậm – text deep */
+  --line:        rgba(31,61,46,.11);
+  --line-strong: rgba(31,61,46,.20);
+  /* Shadows */
+  --shadow-xs:   0 2px  8px rgba(31,61,46,.06);
+  --shadow-sm:   0 4px 16px rgba(31,61,46,.08);
+  --shadow-md:   0 10px 32px rgba(31,61,46,.10);
+  --shadow-lg:   0 20px 50px rgba(31,61,46,.14);
+}
+
+/* ── 2. GLOBAL ───────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--brown-dark);
+  font-family: 'Be Vietnam Pro', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(circle at 8% 10%, rgba(198,90,58,.055) 0%, transparent 40%),
+    radial-gradient(circle at 90% 85%, rgba(31,61,46,.05) 0%, transparent 40%);
+  background-attachment: fixed;
+}
+
+a { color: inherit; text-decoration: none; }
+
+/* ── 3. ANNOUNCEMENT BAR ─────────────────────────────────────────────── */
+.announcement {
+  padding: 10px;
+  text-align: center;
+  background: linear-gradient(90deg, #1F3D2E 0%, #2d5040 50%, #1F3D2E 100%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .05em;
+}
+
+/* ── 4. HEADER ──────────────────────────────────────────────────────── */
+.site-header {
+  height: 86px;
+  padding: 0 max(20px, calc((100vw - 1200px) / 2));
+  display: grid;
+  grid-template-columns: 180px auto minmax(200px,340px) auto;
+  align-items: center;
+  gap: clamp(14px,2vw,32px);
+  position: sticky;
+  top: 0;
+  background: rgba(247,243,233,.92);
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  z-index: 30;
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 4px 24px rgba(31,61,46,.06);
+}
+
+/* Logo area — SVG logo + tagline stacked */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 180px;
+  text-decoration: none;
+}
+.brand-logo-img {
+  height: 46px;
+  width: auto;
+  display: block;
+  flex-shrink: 0;
+}
+.brand-tagline {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #6a7d6d;
+  letter-spacing: .06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  border-left: 2px solid var(--rust);
+  padding-left: 8px;
+  display: none; /* show on wider viewports */
+}
+@media (min-width: 900px) {
+  .brand-tagline { display: block; }
+}
+
+/* Desktop nav pills */
+.site-header nav {
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: rgba(255,255,255,.7);
+  justify-self: center;
+  white-space: nowrap;
+}
+.site-header nav a,
+#account-nav a {
+  padding: 9px 16px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  transition: background .2s, color .2s;
+}
+.site-header nav a:hover { background: rgba(31,61,46,.08); }
+.site-header nav a[aria-current="page"] {
+  background: var(--ink);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(31,61,46,.22);
+}
+
+/* Search bar */
+.header-search {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 4px 5px 4px 16px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(255,255,255,.85);
+  transition: border-color .2s, box-shadow .2s;
+}
+.header-search:focus-within {
+  border-color: var(--rust);
+  box-shadow: 0 0 0 3px rgba(198,90,58,.12);
+}
+.header-search input {
+  min-width: 0; flex: 1; border: 0; outline: 0;
+  background: transparent; color: var(--ink);
+  font: 500 13px 'Be Vietnam Pro', sans-serif;
+}
+.header-search input::placeholder { color: #8a9e94; }
+.header-search button {
+  width: 34px; height: 34px; flex: 0 0 34px;
+  border: 0; border-radius: 50%;
+  background: var(--ink); color: #fff;
+  font-size: 18px; line-height: 1; cursor: pointer;
+  transition: background .2s, transform .15s;
+}
+.header-search button:hover {
+  background: var(--rust);
+  transform: scale(1.06);
+}
+
+/* Account nav */
+#account-nav {
+  display: flex; align-items: center; gap: 6px;
+  justify-self: end; white-space: nowrap;
+}
+#account-nav .cart { position: relative; }
+#account-nav .cart[data-count]:not([data-count="0"])::after {
+  content: attr(data-count);
+  position: absolute; top: -5px; right: -2px;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  display: grid; place-items: center;
+  border: 2px solid var(--paper); border-radius: 999px;
+  background: var(--rust); color: #fff;
+  font-size: 9px; font-weight: 800;
+}
+
+/* ── 5. SHELL / LAYOUT ───────────────────────────────────────────────── */
+.shell {
+  width: min(1200px, calc(100% - 34px));
+  margin: auto;
+  padding: 80px 0;
+}
+
+/* ── 6. BOOK CARDS ───────────────────────────────────────────────────── */
+.book-grid {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 20px;
+}
+.book-card, .panel, .order-card {
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.book-card {
+  padding: 11px;
+  transition: transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s;
+  position: relative;
+}
+.book-card:hover {
+  transform: translateY(-8px) scale(1.01);
+  box-shadow: var(--shadow-lg);
+}
+
+/* 3D cover */
+.book-card img, .cover-placeholder {
+  width: 100%;
+  aspect-ratio: 4/5.2;
+  object-fit: cover;
+  border-radius: 13px;
+  background: #e8e2d4;
+  display: grid; place-items: center;
+  font: 500 72px 'Lora', serif;
+  color: var(--rust);
+  box-shadow:
+    inset 5px 0 12px -2px rgba(0,0,0,.26),
+    inset -1px 0 3px rgba(255,255,255,.3),
+    0 12px 28px rgba(31,61,46,.15);
+  transition: box-shadow .3s;
+}
+.book-card:hover img, .book-card:hover .cover-placeholder {
+  box-shadow:
+    inset 4px 0 9px -1px rgba(0,0,0,.2),
+    0 18px 40px rgba(31,61,46,.2);
+}
+
+/* Bookmark-style badges */
+.book-badge {
+  position: absolute;
+  top: 0; left: 22px;
+  z-index: 3;
+  padding: 6px 10px 14px;
+  clip-path: polygon(0 0,100% 0,100% 80%,50% 100%,0 80%);
+  font-size: 10px; font-weight: 800;
+  color: #fff;
+  background: var(--rust);
+  text-align: center;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  min-width: 36px;
+  box-shadow: 2px 4px 10px rgba(198,90,58,.35);
+  line-height: 1.2;
+}
+.book-badge.gold {
+  background: var(--gold-warm);
+  box-shadow: 2px 4px 10px rgba(201,169,110,.35);
+  color: #3A2F27;
+}
+.book-badge.green {
+  background: var(--ink);
+  box-shadow: 2px 4px 10px rgba(31,61,46,.35);
+}
+
+.book-card h3 {
+  font: 600 16px/1.35 'Lora', serif;
+  color: var(--brown-dark);
+  margin: 13px 4px 5px;
+  transition: color .2s;
+}
+.book-card:hover h3 { color: var(--rust); }
+.book-card p {
+  font-size: 11px; color: #5a6b63;
+  margin: 0 4px 11px; line-height: 1.45;
+}
+
+/* ── 7. BUTTONS ──────────────────────────────────────────────────────── */
+.btn-brand, .pill {
+  border: 0; border-radius: 99px; padding: 13px 22px;
+  background: var(--ink); color: #fff; font-weight: 700;
+  cursor: pointer; font-family: inherit; font-size: 14px;
+}
+.btn-brand { background: linear-gradient(135deg, #C65A3A 0%, #d4613e 100%); }
+.btn-brand:hover { background: linear-gradient(135deg, #b5502f 0%, #c65939 100%); }
+.pill.light { background: #fff; color: var(--ink); border: 1.5px solid var(--line-strong); }
+.pill.light:hover { background: var(--paper); }
+
+/* ── 8. HERO ─────────────────────────────────────────────────────────── */
+.hero { min-height: calc(100vh - 110px); display: grid; place-items: center; text-align: center; position: relative; overflow: hidden; }
+.hero::before { content: ""; position: absolute; width: 520px; height: 520px; border: 1px solid rgba(198,90,58,.18); border-radius: 50%; right: -240px; top: -260px; box-shadow: 0 0 0 72px rgba(198,90,58,.05); }
+.eyebrow { font-size: 10px; letter-spacing: .22em; text-transform: uppercase; font-weight: 700; color: var(--rust); }
+.hero h1, .page-title { font: 500 clamp(48px,7vw,100px)/.96 'Lora', serif; letter-spacing: -.05em; margin: 24px 0; color: var(--brown-dark); }
+.hero h1 em { display: block; color: var(--rust); font-style: italic; }
+.hero p { max-width: 640px; color: #6d7e73; line-height: 1.8; }
+.actions { display: flex; gap: 12px; justify-content: center; margin-top: 28px; }
+
+/* ── 9. MISC LAYOUT ──────────────────────────────────────────────────── */
+.section-head { display: flex; justify-content: space-between; align-items: end; margin-bottom: 28px; }
+.section-head .page-title { font-size: clamp(42px,5vw,66px); margin: 10px 0; }
+.search { display: flex; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 99px; background: #fff; margin-bottom: 32px; }
+.search input { border: 0; outline: 0; flex: 1; padding: 0 16px; }
+
+/* Stock & status */
+.stock { display: inline-block; padding: 8px 13px; border-radius: 99px; background: #e4f2eb; color: #176a45; font-size: 11px; font-weight: 700; }
+.stock.out { background: #fff0ec; color: #a84232; }
+.badge-status { padding: 6px 11px; border-radius: 99px; background: rgba(31,61,46,.08); font-size: 10px; font-weight: 600; }
+
+/* Cards & lists */
+.cards { display: grid; gap: 14px; }
+.list-item { display: grid; grid-template-columns: 60px 1fr auto; gap: 14px; align-items: center; padding: 14px; background: #fff; border: 1px solid var(--line); border-radius: 16px; }
+.list-item img { width: 60px; height: 78px; object-fit: cover; border-radius: 8px; }
+.list-item small { display: block; color: #758079; }
+
+/* Forms */
+.summary { padding: 24px; }
+.two-col { display: grid; grid-template-columns: 1fr 350px; gap: 24px; }
+.form-card { padding: 28px; }
+.form-card label { display: block; font-size: 11px; font-weight: 700; margin-bottom: 14px; color: var(--ink); }
+.form-card input, .form-card textarea, .form-card select, .admin-table select {
+  width: 100%; padding: 12px; border: 1.5px solid var(--line); border-radius: 11px;
+  background: #fafaf5; margin-top: 7px; font-family: inherit; color: var(--brown-dark);
+  transition: border-color .2s, box-shadow .2s;
+}
+.form-card input:focus, .form-card textarea:focus, .form-card select:focus {
+  outline: 0; border-color: var(--rust); box-shadow: 0 0 0 3px rgba(198,90,58,.1);
+}
+.message { padding: 12px 16px; border-radius: 11px; background: #e6f5ec; color: #176a45; margin: 14px 0; font-size: 13px; }
+.message.error { background: #ffeee9; color: #a84232; }
+
+/* Orders */
+.order-card { margin-bottom: 16px; }
+.order-card header, .order-card footer { padding: 16px 22px; background: #f0ede5; display: flex; justify-content: space-between; align-items: center; }
+.order-items { padding: 8px 22px; }
+.order-items > div { padding: 12px 0; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; }
+
+/* Admin */
+.admin-layout { display: grid; grid-template-columns: 220px 1fr; min-height: 75vh; }
+.admin-side { padding: 24px; background: var(--ink); color: #fff; border-radius: 20px; }
+.admin-side a { display: block; padding: 11px; border-radius: 9px; transition: background .2s; }
+.admin-side a:hover { background: rgba(255,255,255,.12); }
+.admin-content { padding-left: 24px; }
+.admin-table { width: 100%; border-collapse: collapse; }
+.admin-table th, .admin-table td { padding: 12px; border-bottom: 1px solid var(--line); font-size: 11px; text-align: left; }
+.admin-table small { display: block; color: #7c8881; }
+
+/* Loading */
+.loading { text-align: center; padding: 100px; color: #7d9086; }
+
+/* Auth */
+.auth-wrap { min-height: 72vh; display: grid; place-items: center; }
+.auth-card { width: min(460px,calc(100% - 30px)); }
+.auth-card h1 { font: 500 44px 'Lora', serif; color: var(--brown-dark); }
+.auth-card .form-card { box-shadow: 0 20px 56px rgba(31,61,46,.1); }
+
+/* ── 10. FOOTER (FULL BRAND-GUIDE VERSION) ───────────────────────────── */
+footer {
+  background: var(--ink);
+  color: rgba(255,255,255,.82);
+  padding: 0;
+}
+.footer-inner {
+  width: min(1200px, calc(100% - 34px));
+  margin: auto;
+  padding: 60px 0 30px;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 48px;
+}
+.footer-brand .footer-logo-img {
+  height: 50px;
+  width: auto;
+  margin-bottom: 14px;
+  /* invert to white on dark bg */
+  filter: brightness(0) invert(1);
+}
+.footer-brand .footer-tagline {
+  font: italic 500 16px/1.55 'Lora', serif;
+  color: rgba(255,255,255,.65);
+  margin-bottom: 16px;
+}
+.footer-brand .footer-tagline em {
+  color: var(--rust);
+  font-style: normal;
+}
+.footer-quote {
+  margin-top: 20px;
+  padding: 16px 18px;
+  background: rgba(255,255,255,.07);
+  border-left: 3px solid var(--rust);
+  border-radius: 0 10px 10px 0;
+  font: italic 13px/1.7 'Lora', serif;
+  color: rgba(255,255,255,.6);
+}
+.footer-quote cite {
+  display: block; margin-top: 8px;
+  font: 700 10px/1 'Be Vietnam Pro', sans-serif;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--rust); font-style: normal;
+}
+.footer-col h4 {
+  font: 700 11px 'Be Vietnam Pro', sans-serif;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.45);
+  margin: 0 0 16px;
+}
+.footer-col a {
+  display: block;
+  color: rgba(255,255,255,.7);
+  font-size: 13px;
+  margin-bottom: 10px;
+  transition: color .2s, transform .2s;
+}
+.footer-col a:hover { color: #fff; transform: translateX(3px); }
+
+/* Footer icon service row */
+.footer-services {
+  width: min(1200px, calc(100% - 34px));
+  margin: 0 auto;
+  padding: 28px 0;
+  border-top: 1px solid rgba(255,255,255,.1);
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.footer-service-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,.7);
+}
+.footer-service-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.1);
+  display: grid; place-items: center;
+  font-size: 17px;
+}
+.footer-bottom {
+  border-top: 1px solid rgba(255,255,255,.08);
+  text-align: center;
+  padding: 20px;
+  font-size: 11px;
+  color: rgba(255,255,255,.35);
+}
+
+/* ── 11. DETAIL PAGE COVER ENHANCEMENT ──────────────────────────────── */
+.detail-cover {
+  width: 100%; border-radius: 22px;
+  box-shadow: inset 5px 0 14px -2px rgba(0,0,0,.28), 0 28px 60px rgba(31,61,46,.2);
+}
+
+/* ── 12. RESPONSIVE ─────────────────────────────────────────────────── */
+@media (max-width: 1120px) {
+  .site-header { grid-template-columns: 160px minmax(180px,1fr) auto; }
+  .site-header nav { display: none; }
+  .footer-inner { grid-template-columns: 1fr 1fr; gap: 32px; }
+}
+@media (max-width: 800px) {
+  .book-grid { grid-template-columns: repeat(2,1fr); }
+  .detail, .two-col, .admin-layout { grid-template-columns: 1fr; }
+  .detail { gap: 28px; }
+  .detail-cover { max-width: 320px; margin: auto; display: block; }
+  .admin-content { padding: 22px 0; }
+  .section-head { display: block; }
+  .site-header { height: 70px; }
+  .shell { padding: 52px 0; }
+  .footer-inner { grid-template-columns: 1fr; gap: 24px; padding: 40px 0 20px; }
+}
+@media (max-width: 470px) {
+  .book-grid { gap: 10px; }
+  .book-card h3 { font-size: 14px; }
+  .list-item { grid-template-columns: 45px 1fr; }
+  .list-item > button { grid-column: 1/-1; }
+  .hero h1 { font-size: 46px; }
+}

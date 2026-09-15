@@ -1,0 +1,39 @@
+@charset "UTF-8";
+/* One local Unicode-safe family for the whole application. Keeping this local
+   avoids a different fallback font while the external web font is loading. */
+:root {
+  --font-app: "Segoe UI", Arial, Helvetica, sans-serif;
+}
+
+html,
+body,
+body *,
+body *::before,
+body *::after,
+button,
+input,
+textarea,
+select,
+option {
+  font-family: "Segoe UI", Arial, Helvetica, sans-serif !important;
+}
+
+.category-card {
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.category-card:hover,
+.category-card:focus-visible {
+  transform: translateY(-4px);
+  border-color: rgba(191, 80, 50, 0.35);
+  box-shadow: 0 18px 42px rgba(17, 41, 31, 0.1);
+  outline: none;
+}
+
+body[data-page="admin"] .admin-content .page-title {
+  font-size: clamp(48px, 6vw, 78px);
+  font-weight: 650;
+  line-height: 1.04;
+  letter-spacing: -0.045em;
+}
