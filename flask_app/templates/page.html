@@ -8,16 +8,16 @@
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/favicon.svg') }}">
   <meta name="theme-color" content="#1F3D2E">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20260915-400">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20260916-004">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/icons.css') }}?v=20260915-400">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/motion-polish.css') }}?v=20260915-400">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/motion-polish.css') }}?v=20260916-003">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/header-experience.css') }}?v=20260915-401">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/coupon-ribbon.css') }}?v=20260915-400">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/chat-widget.css') }}?v=20260915-400">
   {% if module == 'orders' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-orders.css') }}?v=20260915-400"><link rel="stylesheet" href="{{ url_for('static', filename='css/admin-orders-collapse.css') }}?v=20260915-400">{% endif %}
   {% if module == 'reports' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-reports.css') }}?v=20260915-400">{% endif %}
   {% if module == 'coupons' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-coupon-picker.css') }}?v=20260915-400"><link rel="stylesheet" href="{{ url_for('static', filename='css/admin-coupon-picker-fix.css') }}?v=20260915-400">{% endif %}
-  {% if page == 'home' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/home-experience.css') }}?v=20260915-403"><link rel="stylesheet" href="{{ url_for('static', filename='css/home-balance.css') }}?v=20260915-401"><link rel="stylesheet" href="{{ url_for('static', filename='css/home-quick-actions.css') }}?v=20260915-400">{% endif %}
+  {% if page == 'home' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/home-experience.css') }}?v=20260915-403"><link rel="stylesheet" href="{{ url_for('static', filename='css/home-balance.css') }}?v=20260915-415"><link rel="stylesheet" href="{{ url_for('static', filename='css/home-quick-actions.css') }}?v=20260915-400">{% endif %}
   {% if page == 'orders' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/orders-experience.css') }}?v=20260915-400"><link rel="stylesheet" href="{{ url_for('static', filename='css/orders-workflow.css') }}?v=20260915-400">{% endif %}
   {% if page == 'account' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}?v=20260915-400"><link rel="stylesheet" href="{{ url_for('static', filename='css/account-extra.css') }}?v=20260915-400">{% endif %}
   {% if page == 'checkout' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/checkout.css') }}?v=20260915-400"><link rel="stylesheet" href="{{ url_for('static', filename='css/checkout-addresses.css') }}?v=20260915-400">{% endif %}
@@ -155,13 +155,13 @@
       <span>T&#220;i kho&#7843;n</span>
     </a>
   </nav>
-  {% if page not in ['detail', 'home', 'checkout'] %}<script src="{{ url_for('static', filename='js/app.js') }}?v=20260915-307"></script>{% endif %}
-  {% if page == 'detail' %}<script src="{{ url_for('static', filename='js/detail-page-v3.js') }}?v=20260915-302"></script>{% endif %}
-  <script src="{{ url_for('static', filename='js/header-experience.js') }}?v=20260915-301"></script>
+  {% if page not in ['detail', 'home', 'checkout'] %}<script src="{{ url_for('static', filename='js/app.js') }}?v=20260916-004"></script>{% endif %}
+  {% if page == 'detail' %}<script src="{{ url_for('static', filename='js/detail-page-v3.js') }}?v=20260916-004"></script>{% endif %}
+  <script src="{{ url_for('static', filename='js/header-experience.js') }}?v=20260916-004"></script>
   <script src="{{ url_for('static', filename='js/chat-widget.js') }}?v=20260915-300"></script>
   {% if module == 'orders' %}<script src="{{ url_for('static', filename='js/admin-orders-collapse.js') }}?v=20260915-300"></script>{% endif %}
-  {% if page == 'home' %}<script src="{{ url_for('static', filename='js/home-page-v2.js') }}?v=20260915-304"></script>{% endif %}
-  {% if page == 'cart' %}<script src="{{ url_for('static', filename='js/cart-summary.js') }}?v=20260915-307"></script>{% endif %}
+  {% if page == 'home' %}<script src="{{ url_for('static', filename='js/home-page-v2.js') }}?v=20260916-004"></script>{% endif %}
+  {% if page == 'cart' %}<script src="{{ url_for('static', filename='js/cart-summary.js') }}?v=20260916-002"></script>{% endif %}
   {% if page == 'orders' %}<script src="{{ url_for('static', filename='js/orders-workflow.js') }}?v=20260915-300"></script>{% endif %}
   {% if page in ['login', 'forgot-password', 'reset-password'] %}<script src="{{ url_for('static', filename='js/password-recovery.js') }}?v=20260915-300"></script>{% endif %}
 {% endif %}

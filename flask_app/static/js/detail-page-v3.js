@@ -94,11 +94,20 @@
     async function save(kind, next = '') {
       if (!available) return showOutOfStock();
       try {
+        if (kind === 'cart' && !next && typeof window.flyToCart === 'function') {
+          const coverEl = document.querySelector('.detail-cover') || document.querySelector('.detail-visual img, .detail-visual .cover-placeholder');
+          if (coverEl) window.flyToCart(coverEl);
+        }
         await api(`/api/items/${kind}`, {method:'POST',body:JSON.stringify({workId:book.workId,quantity:kind === 'cart' ? quantity : 1,selected:Boolean(next)})});
         if (next) return location.assign(next);
-        document.querySelector('#detail-message').innerHTML = `<p class="message">${kind === 'cart' ? `Đã thêm ${quantity} cuốn vào giỏ hàng.` : 'Đã lưu vào danh sách yêu thích.'}</p>`;
+        if (kind === 'cart' && window.toast) {
+          window.toast({title:'Đã thêm vào giỏ hàng',message:`${quantity} cuốn · ${esc(book.title)}`,kind:'ok',action:{label:'Xem giỏ',href:'/cart'}});
+        } else {
+          document.querySelector('#detail-message').innerHTML = `<p class="message">${kind === 'cart' ? `Đã thêm ${quantity} cuốn vào giỏ hàng.` : 'Đã lưu vào danh sách yêu thích.'}</p>`;
+        }
       } catch (error) {
         if (error.status === 401) return location.assign(`/login?next=${encodeURIComponent(next || location.pathname)}`);
+        if (window.toast) window.toast({title:'Không thể cập nhật',message:esc(error.message),kind:'error'});
         document.querySelector('#detail-message').innerHTML = `<p class="message error">${esc(error.message)}</p>`;
       }
     }
@@ -139,9 +148,17 @@
     try {
       const books = await api('/api/home?limit=12');
       const related = books.filter(book => book.work_id !== workId).slice(0,4);
-      document.querySelector('#related-books').innerHTML = related.map(book => `<a class="related-card" href="/books/${encodeURIComponent(book.work_id)}">${cover(book)}<div><b>${esc(book.title)}</b><span>${esc(book.authors || 'Chưa rõ tác giả')}</span><strong>${money(book.promotional_price || book.selling_price)}</strong></div></a>`).join('') || '<p>Chưa có sách liên quan.</p>';
+      document.querySelector('#related-books').innerHTML = related.map(book => `<a class="related-card" href="/books/${encodeURIComponent(book.work_id)}"><div class="book-card-cover-wrap">${cover(book)}<span class="book-card-shine"></span></div><div><b>${esc(book.title)}</b><span>${esc(book.authors || 'Chưa rõ tác giả')}</span><strong>${money(book.promotional_price || book.selling_price)}</strong></div></a>`).join('') || '<p>Chưa có sách liên quan.</p>';
     } catch (_) { document.querySelector('#related-books').innerHTML = '<p>Chưa thể tải sách liên quan lúc này.</p>'; }
   }
 
-  api(`/api/books/${encodeURIComponent(workId)}`).then(book => { renderBook(book); loadReviews(); loadRelated(); }).catch(error => { root.innerHTML = `<section class="shell"><p class="message error">${esc(error.message)}</p></section>`; });
+  root.innerHTML = `<div class="skeleton-detail"><div class="skeleton skeleton-cover"></div><div class="skeleton-detail-body"><div class="skeleton-line title"></div><div class="skeleton-line meta"></div><div class="skeleton-line block"></div><div class="skeleton-line block"></div><div class="skeleton-line short"></div></div></div>`;
+
+  api(`/api/books/${encodeURIComponent(workId)}`).then(book => { renderBook(book); loadReviews(); loadRelated(); }).catch(error => {
+    if (typeof window.renderEmpty === 'function') {
+      root.innerHTML = `<section class="shell">${window.renderEmpty('search', 'Không tìm thấy sách', esc(error.message) || 'Có lỗi xảy ra khi tải thông tin sách.', [{label:'Về trang chủ',href:'/',style:'primary'},{label:'Xem kho sách',href:'/books'}])}</section>`;
+    } else {
+      root.innerHTML = `<section class="shell"><p class="message error">${esc(error.message)}</p></section>`;
+    }
+  });
 })();

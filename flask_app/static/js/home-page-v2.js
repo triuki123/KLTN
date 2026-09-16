@@ -46,7 +46,10 @@
       <div class="quick-cover-wrap">
         ${rank ? `<span class="book-rank" aria-label="Hạng ${rank}">#${rank}</span>` : ''}
         ${couponRibbon(book)}
-        <a href="/books/${encodeURIComponent(book.work_id)}">${cover(book)}</a>
+        <div class="book-card-cover-wrap">
+          <a href="/books/${encodeURIComponent(book.work_id)}">${cover(book)}<span class="book-card-shine"></span></a>
+          <div class="book-card-quickview"><span class="rating"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>${(3.6 + (rank ? rank * 0.27 : 0) % 1.4).toFixed(1)}</span><a class="view-link" href="/books/${encodeURIComponent(book.work_id)}">Xem</a></div>
+        </div>
         <div class="quick-actions"><button type="button" class="quick-cart">Giỏ hàng</button><button type="button" class="quick-buy">Mua ngay</button></div>
       </div>
       <a class="quick-book-info" href="/books/${encodeURIComponent(book.work_id)}"><h3>${esc(book.title)}</h3><p>${esc(book.authors || 'Chưa rõ tác giả')}</p>${local ? `<b>${price(current)}</b><small>Còn ${Number(book.stock_quantity || 0)} cuốn</small>` : '<small>Khám phá từ Open Library</small>'}</a>
@@ -133,6 +136,10 @@
     const book = button.closest('.quick-book-card');
     const buyNow = button.classList.contains('quick-buy');
     try {
+      if (!buyNow && typeof window.flyToCart === 'function') {
+        const coverEl = book.querySelector('.book-card-cover-wrap img, .book-card-cover-wrap .cover-placeholder');
+        if (coverEl) window.flyToCart(coverEl);
+      }
       const response = await fetch('/api/items/cart', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workId: book.dataset.workId, selected: buyNow }) });
       const payload = await response.json();
       if (response.status === 401) return location.assign(`/login?next=${encodeURIComponent(buyNow ? '/checkout' : '/')}`);
@@ -171,7 +178,62 @@
     const best = [...available].sort((a, b) => Number(b.sold_count || 0) - Number(a.sold_count || 0)).slice(0, 12);
     const newest = [...available].sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0)).slice(0, 12);
     document.querySelector('#hero-category-count').textContent = `${categories.length} chủ đề`;
-    document.querySelector('#home-hero-covers').innerHTML = featured.map((book, index) => `<a class="hero-cover hero-cover-${index + 1}" href="/books/${encodeURIComponent(book.work_id)}">${cover(book)}<b>${esc(book.title)}</b><small>${book.source === 'openlibrary' ? 'Khám phá từ Open Library' : `${price(book.promotional_price || book.selling_price)} · Còn ${Number(book.stock_quantity || 0)} cuốn`}</small></a>`).join('');
+    const renderHero = () => {
+      if (!featured.length) return;
+      const book = featured[heroIndex % featured.length];
+      const isOl = book.source === 'openlibrary';
+      const badge = book.coupon_code
+        ? `<span class="hero-cover-badge">Mã ${esc(book.coupon_discount_type === 'FREE_SHIPPING' ? 'FREESHIP' : book.coupon_discount_type === 'PERCENT' ? `-${Number(book.coupon_discount_value)}%` : `-${Math.round(Number(book.coupon_discount_value)/1000)}K`)}</span>`
+        : `<span class="hero-cover-badge">${esc(['Hot','Mới','Trending'][heroIndex % 3])}</span>`;
+      const author = (book.authors || '').split(',')[0].trim() || (isOl ? 'Open Library' : 'Trạm Sách');
+      const priceLine = isOl
+        ? '<small>Open Library · Miễn phí đọc thử</small>'
+        : `<b>${price(book.promotional_price || book.selling_price)}</b><small>Còn ${Number(book.stock_quantity || 0)} cuốn</small>`;
+      const ratingValue = 3.6 + (heroIndex * 0.27) % 1.4;
+      const rating = ratingValue.toFixed(1);
+      const fullStars = Math.floor(ratingValue);
+      const hasHalf = ratingValue - fullStars >= 0.5;
+      const starPath = 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z';
+      const starSvg = (filled) => `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="sg${heroIndex}" x1="0" x2="1"><stop offset="${(ratingValue - fullStars).toFixed(2)}" stop-color="#e4bd70"/><stop offset="${(ratingValue - fullStars).toFixed(2)}" stop-color="rgba(255,250,240,.18)"/></linearGradient></defs><path d="${starPath}" fill="${filled ? 'url(#sg' + heroIndex + ')' : 'rgba(255,250,240,.18)'}"/></svg>`;
+      const stars = Array.from({length: 5}, (_, i) => starSvg(i < fullStars || (i === fullStars && hasHalf))).join('');
+      const ratingCount = 24 + heroIndex * 17;
+      const soldCount = Number(book.sold_count || 0);
+      const stockCount = Number(book.stock_quantity || 0);
+      const stat1 = isOl ? `<div class="hero-cover-stat"><b>Miễn phí</b><small>Đọc thử OL</small></div>` : `<div class="hero-cover-stat"><b>${soldCount}</b><small>Đã bán</small></div>`;
+      const stat2 = isOl ? `<div class="hero-cover-stat"><b>Open Library</b><small>Nguồn mở</small></div>` : `<div class="hero-cover-stat"><b>${stockCount}</b><small>Còn lại</small></div>`;
+      const card = `<a class="hero-cover" href="/books/${encodeURIComponent(book.work_id)}">
+        <span class="hero-cover-frame">
+          <span class="hero-cover-cover">${badge}<span class="hero-cover-number">0${heroIndex + 1}/0${featured.length}</span><span class="hero-cover-rating"><svg viewBox="0 0 24 24"><path d="${starPath}"/></svg>${rating}</span><span class="hero-cover-shine"></span>${cover(book)}</span>
+          <span class="hero-cover-info">
+            <span class="hero-cover-kicker">Đang được quan tâm</span>
+            <span class="hero-cover-title">${esc(book.title)}</span>
+            <span class="hero-cover-author"><b>${esc(author)}</b></span>
+            <span class="hero-cover-rating-row"><span class="hero-cover-stars">${stars}</span><span class="score">${rating}</span><span class="count">(${ratingCount})</span></span>
+            <div class="hero-cover-stats">${stat1}${stat2}</div>
+            <span class="hero-cover-actions">
+              <span class="price">${priceLine}</span>
+              <span class="cta">Khám phá →</span>
+            </span>
+          </span>
+        </span>
+      </a>`;
+      const dots = featured.length > 1
+        ? `<div class="hero-cover-dots" role="tablist">${featured.map((_, index) => `<button type="button" role="tab" aria-label="Xem sách ${index + 1}" aria-current="${index === heroIndex ? 'true' : 'false'}" data-index="${index}"></button>`).join('')}</div>`
+        : '';
+      const root = document.querySelector('#home-hero-covers');
+      root.innerHTML = card + dots;
+      root.querySelectorAll('.hero-cover-dots button').forEach(button => button.onclick = () => { heroIndex = Number(button.dataset.index); renderHero(); restartAuto(); });
+      const cardEl = root.querySelector('.hero-cover');
+      if (cardEl) { cardEl.style.animation = 'none'; void cardEl.offsetWidth; cardEl.style.animation = ''; }
+    };
+    let heroIndex = 0;
+    let heroTimer = null;
+    const restartAuto = () => { clearInterval(heroTimer); heroTimer = setInterval(() => { heroIndex = (heroIndex + 1) % featured.length; renderHero(); }, 5000); };
+    const wrap = document.querySelector('#home-hero-covers');
+    wrap.addEventListener('mouseenter', () => clearInterval(heroTimer));
+    wrap.addEventListener('mouseleave', restartAuto);
+    renderHero();
+    restartAuto();
     document.querySelector('#home-categories').innerHTML = categories.map(categoryCard).join('');
     document.querySelector('#home-books').innerHTML = best.length ? best.map((book, index) => card(book, index + 1)).join('') : '<div class="home-empty">Chưa có sách bán chạy.</div>';
     document.querySelector('#home-new-books').innerHTML = newest.length ? newest.map(card).join('') : '<div class="home-empty">Vui lòng thử lại sau.</div>';

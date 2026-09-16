@@ -116,7 +116,8 @@
             checkbox.checked = !nextSelected;
             card.classList.toggle('is-selected', !nextSelected);
             checkbox.disabled = false;
-            window.alert(error.message);
+            if (window.toast) window.toast({title:'Không thể cập nhật',message:error.message,kind:'error'});
+            else window.alert(error.message);
           }
         };
       });

@@ -4,6 +4,7 @@ import uuid
 import secrets
 import hashlib
 import smtplib
+import time as _time
 from email.message import EmailMessage
 import unicodedata
 from pathlib import Path
@@ -13,6 +14,20 @@ from flask import Flask, jsonify, redirect, render_template, request, session, u
 import pymysql
 import requests
 from argon2 import PasswordHasher
+
+# In-memory TTL cache. Key -> (expires_at, payload).
+_CACHE = {}
+def cache_get(key):
+    entry = _CACHE.get(key)
+    if not entry: return None
+    expires, payload = entry
+    if expires < _time.time():
+        _CACHE.pop(key, None)
+        return None
+    return payload
+def cache_set(key, payload, ttl):
+    _CACHE[key] = (_time.time() + ttl, payload)
+
 from argon2.exceptions import VerifyMismatchError
 from werkzeug.utils import secure_filename
 
@@ -351,6 +366,9 @@ def current_session(): return jsonify(success=True, data={"id":session.get("user
 def home_catalog():
     """Local inventory first (so coupons/prices show), Open Library fills the gap."""
     limit = min(max(int(request.args.get("limit", 8)), 1), 30)
+    cache_key = f"home:{limit}"
+    cached = cache_get(cache_key)
+    if cached is not None: return jsonify(success=True, data=cached)
     local_rows = []
     con = db()
     try:
@@ -368,24 +386,32 @@ def home_catalog():
         con.close()
     remaining = max(limit - len(local_rows), 0)
     if not remaining:
+        cache_set(cache_key, local_rows, 300)
         return jsonify(success=True, data=local_rows)
     try:
         response = openlibrary_get("https://openlibrary.org/search.json", params={"q": "language:vie", "limit": remaining, "fields": "key,title,author_name,cover_i,first_publish_year,edition_count"}, timeout=(3, 8))
         response.raise_for_status()
         docs = response.json().get("docs", [])
         ol_rows = [{"work_id": str(book.get("key", "")).split("/")[-1], "title": book.get("title", "Không rõ tên"), "authors": ", ".join(book.get("author_name", [])) or "Chưa rõ tác giả", "cover_url": f"https://covers.openlibrary.org/b/id/{book['cover_i']}-L.jpg" if book.get("cover_i") else None, "stock_quantity": None, "sold_count": 0, "selling_price": None, "promotional_price": None, "source": "openlibrary"} for book in docs if book.get("key")]
-        return jsonify(success=True, data=local_rows + ol_rows)
+        merged = local_rows + ol_rows
+        cache_set(cache_key, merged, 300)
+        return jsonify(success=True, data=merged)
     except (requests.RequestException, ValueError):
+        cache_set(cache_key, local_rows, 60)
         return jsonify(success=True, data=local_rows)
 
 @app.get("/api/categories")
 def public_categories():
+    cached = cache_get("categories")
+    if cached is not None: return jsonify(success=True, data=cached)
     con = db()
     try:
         with con.cursor() as cur:
             cur.execute("SELECT id,name,slug,description,display_order FROM categories WHERE status='ACTIVE' ORDER BY display_order,name")
             rows = cur.fetchall()
-        return jsonify(success=True, data=[{key: json_value(value) for key, value in row.items()} for row in rows])
+        data = [{key: json_value(value) for key, value in row.items()} for row in rows]
+        cache_set("categories", data, 600)
+        return jsonify(success=True, data=data)
     finally:
         con.close()
 
