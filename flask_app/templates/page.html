@@ -23,7 +23,7 @@
   {% if page == 'checkout' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/checkout.css') }}?v=20260915-400"><link rel="stylesheet" href="{{ url_for('static', filename='css/checkout-addresses.css') }}?v=20260915-400">{% endif %}
   {% if page == 'checkout' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/checkout-coupon.css') }}?v=20260915-400"><link rel="stylesheet" href="{{ url_for('static', filename='css/checkout-polish.css') }}?v=20260915-400">{% endif %}
   {% if page == 'cart' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/cart-quantity.css') }}?v=20260915-400"><link rel="stylesheet" href="{{ url_for('static', filename='css/cart-summary.css') }}?v=20260915-400">{% endif %}
-  {% if page == 'detail' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/detail-actions.css') }}?v=20260915-400">{% endif %}
+  {% if page == 'detail' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/detail-actions.css') }}?v=20260916-7">{% endif %}
   {% if page == 'admin-login' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-login.css') }}?v=20260915-400">{% endif %}
   {% if page in ['login', 'forgot-password', 'reset-password'] %}<link rel="stylesheet" href="{{ url_for('static', filename='css/password-recovery.css') }}?v=20260915-400">{% endif %}
 </head>
@@ -156,7 +156,7 @@
     </a>
   </nav>
   {% if page not in ['detail', 'home', 'checkout'] %}<script src="{{ url_for('static', filename='js/app.js') }}?v=20260916-004"></script>{% endif %}
-  {% if page == 'detail' %}<script src="{{ url_for('static', filename='js/detail-page-v3.js') }}?v=20260916-004"></script>{% endif %}
+  {% if page == 'detail' %}<script src="{{ url_for('static', filename='js/detail-page-v3.js') }}?v=20260916-7"></script>{% endif %}
   <script src="{{ url_for('static', filename='js/header-experience.js') }}?v=20260916-004"></script>
   <script src="{{ url_for('static', filename='js/chat-widget.js') }}?v=20260915-300"></script>
   {% if module == 'orders' %}<script src="{{ url_for('static', filename='js/admin-orders-collapse.js') }}?v=20260915-300"></script>{% endif %}
