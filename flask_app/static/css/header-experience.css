@@ -324,6 +324,11 @@
     font-size: 17px;
   }
 
+  .site-header .brand-logo-img {
+    width: 82px;
+    height: auto;
+  }
+
   .site-header .brand small {
     font-size: 5px;
   }

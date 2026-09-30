@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 350" role="img" aria-labelledby="title desc">
+  <title id="title">Trạm Sách</title><desc id="desc">Logo chính Trạm Sách với sách, nhánh cây và đèn đọc.</desc>
+  <g transform="translate(38 24)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M42 79v104h26V67M76 60v123h26V50M110 44v139h26V33" stroke="#123F32" stroke-width="11"/>
+    <path d="M41 69 125 10l37 25M47 81l79-55 31 20" stroke="#123F32" stroke-width="11"/><path d="m162 35 45-25 61 48M162 49l45-22 54 38" stroke="#C95732" stroke-width="11"/>
+    <path d="M207 27v50c0 10-7 16-17 16h-4" stroke="#C95732" stroke-width="8"/><path d="m168 96 35-2 14 20h-61Z" fill="#C95732" stroke="#C95732" stroke-width="3"/><path d="M174 121h25" stroke="#C95732" stroke-width="6"/>
+    <path d="M42 174C23 151 13 121 13 87" stroke="#123F32" stroke-width="8"/><path d="M16 120C-10 117-12 94-10 83c23 4 35 17 26 37ZM25 145c-2-23 13-36 32-40 2 22-10 39-32 40ZM7 91c-19-8-21-27-16-38 19 6 27 19 16 38Z" fill="#123F32" stroke="none"/>
+  </g>
+  <g font-family="Arial, 'Be Vietnam Pro', sans-serif" font-weight="800" font-size="58" text-anchor="middle" letter-spacing="-1"><text x="160" y="255" fill="#C95732">TRẠM</text><text x="160" y="308" fill="#123F32">SÁCH</text></g>
+  <text x="160" y="335" font-family="Arial, 'Be Vietnam Pro', sans-serif" font-size="12" font-weight="600" letter-spacing="3" fill="#292929" text-anchor="middle">DỪNG LẠI · ĐỌC XA HƠN</text>
+</svg>

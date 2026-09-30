@@ -57,7 +57,7 @@ a { color: inherit; text-decoration: none; }
   height: 86px;
   padding: 0 max(20px, calc((100vw - 1200px) / 2));
   display: grid;
-  grid-template-columns: 180px auto minmax(200px,340px) auto;
+  grid-template-columns: 210px auto minmax(200px,340px) auto;
   align-items: center;
   gap: clamp(14px,2vw,32px);
   position: sticky;
@@ -75,14 +75,19 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 180px;
+  width: 210px;
   text-decoration: none;
 }
 .brand-logo-img {
-  height: 46px;
+  height: 52px;
   width: auto;
   display: block;
   flex-shrink: 0;
+}
+.brand picture {
+  display: flex;
+  align-items: center;
+  max-width: 100%;
 }
 .brand-tagline {
   font-size: 9.5px;

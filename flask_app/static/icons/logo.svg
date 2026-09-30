@@ -1,24 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 56" fill="none">
-  <!-- House roof -->
-  <path d="M10 28 L30 10 L50 28" stroke="#1F3D2E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <!-- House body -->
-  <rect x="15" y="27" width="30" height="20" rx="1" fill="#1F3D2E"/>
-  <!-- Door -->
-  <rect x="24" y="35" width="12" height="12" rx="1" fill="#F7F3E9"/>
-  <!-- Lantern hanging from roof peak -->
-  <line x1="30" y1="10" x2="30" y2="7" stroke="#C65A3A" stroke-width="1.5"/>
-  <rect x="26.5" y="4" width="7" height="9" rx="1.5" fill="#C65A3A" opacity="0.9"/>
-  <line x1="29" y1="4" x2="29" y2="13" stroke="#F7F3E9" stroke-width="0.8"/>
-  <line x1="31" y1="4" x2="31" y2="13" stroke="#F7F3E9" stroke-width="0.8"/>
-  <!-- Book stack bottom-right of house -->
-  <rect x="42" y="38" width="10" height="2.5" rx="0.5" fill="#D9C9B4"/>
-  <rect x="43" y="34.5" width="9" height="2.5" rx="0.5" fill="#C65A3A"/>
-  <rect x="44" y="31" width="8" height="2.5" rx="0.5" fill="#1F3D2E"/>
-  <!-- Leaf / plant left side -->
-  <path d="M8 47 Q4 40 10 36 Q12 42 8 47Z" fill="#1F3D2E" opacity="0.7"/>
-  <path d="M8 47 Q14 42 13 36 Q9 41 8 47Z" fill="#1F3D2E" opacity="0.5"/>
-  <line x1="8" y1="47" x2="10" y2="37" stroke="#1F3D2E" stroke-width="1" opacity="0.6"/>
-  <!-- Brand text -->
-  <text x="60" y="27" font-family="'Be Vietnam Pro', sans-serif" font-weight="700" font-size="18" fill="#C65A3A" letter-spacing="-0.5">TRẠM</text>
-  <text x="60" y="46" font-family="'Be Vietnam Pro', sans-serif" font-weight="700" font-size="18" fill="#1F3D2E" letter-spacing="-0.5">SÁCH</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 112" role="img" aria-labelledby="title desc">
+  <title id="title">Trạm Sách</title><desc id="desc">Những cuốn sách tạo thành mái nhà, cạnh nhánh cây và đèn đọc sách.</desc>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M40 48v48h13V42M57 39v57h13V33M74 31v65h13V25" stroke="#123F32" stroke-width="6"/>
+    <path d="M39 43 82 12l19 13M43 48 83 19l16 11" stroke="#123F32" stroke-width="6"/>
+    <path d="m101 25 23-13 32 25M101 32l23-12 28 20" stroke="#C95732" stroke-width="6"/>
+    <path d="M124 20v25c0 5-3 8-8 8h-2" stroke="#C95732" stroke-width="4"/>
+    <path d="m105 54 18-1 7 10H99Z" fill="#C95732" stroke="#C95732" stroke-width="2"/><path d="M108 67h13" stroke="#C95732" stroke-width="3"/>
+    <path d="M39 91C29 78 23 63 23 48" stroke="#123F32" stroke-width="4"/>
+    <path d="M24 64C9 62 8 50 8 44c12 2 19 8 16 20ZM29 75c-1-12 7-19 17-21 1 11-5 20-17 21ZM18 51C8 47 7 37 9 31c10 3 15 10 9 20Z" fill="#123F32" stroke="none"/>
+  </g>
+  <g font-family="Arial, 'Be Vietnam Pro', sans-serif" font-weight="800" letter-spacing="-.8"><text x="178" y="51" font-size="43" fill="#C95732">TRẠM</text><text x="178" y="91" font-size="43" fill="#123F32">SÁCH</text></g>
+  <text x="303" y="108" font-family="Arial, 'Be Vietnam Pro', sans-serif" font-size="10" font-weight="600" letter-spacing="2.1" fill="#292929" text-anchor="middle">DỪNG LẠI · ĐỌC XA HƠN</text>
 </svg>

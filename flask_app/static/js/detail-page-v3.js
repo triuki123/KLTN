@@ -20,6 +20,10 @@
       building:'<path d="M4 21h16M6 21V8l6-4 6 4v13M9 11h1M14 11h1M9 15h1M14 15h1"/>',
       calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/>',
       pages:'<path d="M6 3h10a2 2 0 0 1 2 2v14H8a2 2 0 0 0-2 2V3Z"/><path d="M6 17h9M9 7h6M9 11h6"/>'
+      ,truck:'<path d="M3 6h11v11H3zM14 10h4l3 3v4h-7z"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/>'
+      ,return:'<path d="M9 7H5v-4M5 7a8 8 0 1 1-1 8"/>'
+      ,card:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h3"/>'
+      ,shield:'<path d="M12 3 20 6v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3Z"/><path d="m9 12 2 2 4-5"/>'
     };
     return `<svg class="detail-line-icon" viewBox="0 0 24 24" aria-hidden="true">${paths[name] || ''}</svg>`;
   };
@@ -53,7 +57,9 @@
       ['tag','Mã sách', book.workId, 'Tác phẩm'], ['books','Danh mục', book.category, 'Thể loại'], ['hash','ISBN', book.isbn, 'Mã xuất bản'],
       ['building','Nhà xuất bản', book.publisher, 'Đơn vị phát hành'], ['calendar','Năm xuất bản', book.publicationYear, 'Năm phát hành'], ['pages','Số trang', book.pageCount, 'Giấy ngà chống lóa']
     ];
-    return fields.map(([symbol,label,value,note]) => `<div class="detail-meta-item"><i>${lineIcon(symbol)}</i><span><small>${label}</small><b class="${value ? '' : 'is-pending'}">${esc(value || 'Chưa cập nhật')}</b><em>${note}</em></span></div>`).join('');
+    const availableFields = fields.filter(([, , value]) => value !== null && value !== undefined && String(value).trim() !== '');
+    if (!availableFields.length) return '<p class="detail-meta-empty">Thông tin sách đang được cập nhật</p>';
+    return availableFields.map(([symbol,label,value,note]) => `<div class="detail-meta-item"><i>${lineIcon(symbol)}</i><span><small>${label}</small><b>${esc(value)}</b><em>${note}</em></span></div>`).join('');
   }
 
   async function api(url, options = {}) {
@@ -85,7 +91,7 @@
       <div class="detail-page">
         <nav class="detail-breadcrumb" aria-label="Đường dẫn"><a href="/">Trang chủ</a><span>/</span><a href="/books">Sách</a><span>/</span><b>${esc(book.title)}</b></nav>
         <section class="detail-product">
-          <div class="detail-visual"><div class="detail-cover-stage" id="detail-cover-stage"><div class="detail-book-object">${cover(book, 'detail-cover')}<span class="detail-book-spine" aria-hidden="true"></span><span class="detail-paper-edge detail-paper-edge-right" aria-hidden="true"></span><span class="detail-paper-edge detail-paper-edge-bottom" aria-hidden="true"></span></div></div><span class="detail-cover-note">Ảnh bìa sản phẩm</span>${coverUrl ? `<button class="detail-zoom" id="detail-zoom" type="button" aria-label="Phóng to ảnh bìa">${lineIcon('zoom')}<span class="detail-zoom-label">Phóng to ảnh bìa</span></button>` : ''}</div>
+          <div class="detail-visual"><div class="detail-cover-stage" id="detail-cover-stage"><div class="detail-book-object">${cover(book, 'detail-cover')}<span class="detail-cover-shine" aria-hidden="true"></span><span class="detail-book-spine" aria-hidden="true"></span><span class="detail-paper-edge detail-paper-edge-right" aria-hidden="true"></span><span class="detail-paper-edge detail-paper-edge-bottom" aria-hidden="true"></span>${Number(book.stock) > 0 && Number(book.stock) <= 5 ? '<span class="detail-cover-badge">Còn ít</span>' : Number(book.sold || 0) >= 20 ? '<span class="detail-cover-badge">Bán chạy</span>' : ''}</div></div><span class="detail-cover-note">Ảnh bìa sản phẩm</span>${coverUrl ? `<button class="detail-zoom" id="detail-zoom" type="button" aria-label="Phóng to ảnh bìa">${lineIcon('zoom')}<span class="detail-zoom-label">Phóng to ảnh bìa</span></button>` : ''}</div>
           <article class="detail-info">
             <span class="eyebrow">Tác phẩm · Trạm Sách</span>
             <h1>${esc(book.title)}</h1>
@@ -93,12 +99,14 @@
             <button class="detail-quick-rating" id="detail-quick-rating" type="button" aria-label="Xem đánh giá và nhận xét"><span class="detail-quick-stars">${stars(0)}</span><strong id="detail-quick-score">0.0/5</strong><span id="detail-quick-count">0 nhận xét</span><i></i><span>${Number(book.sold || 0)} cuốn đã bán</span></button>
             <div class="detail-status"><span class="stock${available ? '' : ' out'}">${available ? `Còn ${book.stock} cuốn` : 'Hết hàng'}</span><span>Đã bán ${Number(book.sold || 0)}</span></div>
             <div class="detail-meta">${metadata(book)}</div>
-            <div class="detail-price-line">${priceMarkup}</div>
-            ${hasCoupon ? `<div class="detail-coupon-ticket" aria-label="Mã giảm giá ${esc(book.coupon.code)}"><div class="detail-coupon-ticket-mark"><span>Ưu đãi</span><b>${Math.max(0,Math.round((1-couponPrice/Number(book.price))*100))}%</b></div><div class="detail-coupon-ticket-copy"><small>Mã dành cho sản phẩm</small><strong>${esc(book.coupon.code)}</strong><span>${Number(book.coupon.minimumOrder) > Number(book.price) ? `Đơn tối thiểu ${money(book.coupon.minimumOrder)}` : `Tiết kiệm ${money(Number(book.price)-couponPrice)}`}</span></div><button id="copy-coupon" type="button" data-code="${esc(book.coupon.code)}">${lineIcon('copy')}<span>Sao chép mã</span></button></div>` : ''}
-            <div class="detail-purchase-row"><div class="detail-quantity" aria-label="Chọn số lượng"><button id="quantity-minus" type="button">−</button><strong id="quantity-value">1</strong><button id="quantity-plus" type="button">+</button></div><button id="add-cart" class="pill light" ${available ? '' : 'aria-disabled="true"'}>Thêm vào giỏ hàng</button><button id="buy-now" class="btn-brand" ${available ? '' : 'aria-disabled="true"'}>Mua ngay</button><button id="add-favorite" class="pill light detail-favorite" aria-label="Lưu yêu thích">${icon('heart')}</button></div>
+            <div class="detail-purchase-card">
+              <div class="detail-price-line">${priceMarkup}</div>
+              ${hasCoupon ? `<div class="detail-coupon-ticket" aria-label="Mã giảm giá ${esc(book.coupon.code)}"><div class="detail-coupon-ticket-mark"><span>Ưu đãi</span><b>${Math.max(0,Math.round((1-couponPrice/Number(book.price))*100))}%</b></div><div class="detail-coupon-ticket-copy"><small>Mã dành cho sản phẩm</small><strong>${esc(book.coupon.code)}</strong><span>${Number(book.coupon.minimumOrder) > Number(book.price) ? `Đơn tối thiểu ${money(book.coupon.minimumOrder)}` : `Tiết kiệm ${money(Number(book.price)-couponPrice)}`}</span></div><button id="copy-coupon" type="button" data-code="${esc(book.coupon.code)}">${lineIcon('copy')}<span>Sao chép mã</span></button></div>` : ''}
+              <div class="detail-purchase-row"><div class="detail-quantity-wrap"><span>Số lượng</span><div class="detail-quantity" aria-label="Chọn số lượng"><button id="quantity-minus" type="button">−</button><strong id="quantity-value">1</strong><button id="quantity-plus" type="button">+</button></div><small id="quantity-note" aria-live="polite"></small></div><button id="add-cart" class="pill light" ${available ? '' : 'aria-disabled="true"'}>Thêm vào giỏ hàng</button><button id="buy-now" class="btn-brand" ${available ? '' : 'aria-disabled="true"'}>Mua ngay</button><button id="add-favorite" class="pill light detail-favorite" aria-label="Lưu yêu thích">${icon('heart')}</button></div>
+            </div>
             <button class="detail-share" id="detail-share" type="button">${lineIcon('share')}<span>Chia sẻ cuốn sách</span></button>
             <div id="detail-message" aria-live="polite"></div>
-            <div class="detail-services"><div><i class="icon-check">${icon('check')}</i><b>Giao hàng toàn quốc</b><span>Dự kiến từ 2–5 ngày</span></div><div><i class="icon-check">${icon('check')}</i><b>Miễn phí từ 299.000đ</b><span>Áp dụng theo giá trị đơn</span></div><div><i class="icon-check">${icon('check')}</i><b>Đổi trả trong 7 ngày</b><span>Khi sách có lỗi</span></div><div><i class="icon-check">${icon('check')}</i><b>Thanh toán linh hoạt</b><span>Hỗ trợ COD</span></div></div>
+            <div class="detail-services"><div><i>${lineIcon('truck')}</i><b>Giao hàng toàn quốc</b><span>Dự kiến từ 2–5 ngày</span></div><div><i>${lineIcon('shield')}</i><b>Miễn phí từ 299.000đ</b><span>Áp dụng theo giá trị đơn</span></div><div><i>${lineIcon('return')}</i><b>Đổi trả trong 7 ngày</b><span>Khi sách có lỗi</span></div><div><i>${lineIcon('card')}</i><b>Thanh toán linh hoạt</b><span>Hỗ trợ COD</span></div></div>
           </article>
         </section>
         <section class="detail-description-panel"><span class="eyebrow">Thông tin tác phẩm</span><h2>Giới thiệu sách</h2><blockquote class="detail-quote"><span>Trích dẫn nổi bật</span><p>“${esc(quote)}”</p></blockquote><div class="detail-description-copy${description.length > 420 ? ' is-collapsed' : ''}" id="detail-description-copy"><p>${esc(description)}</p></div>${description.length > 420 ? '<button class="detail-read-more" id="detail-read-more" type="button" aria-expanded="false">Xem thêm</button>' : ''}</section>
@@ -119,7 +127,15 @@
     let quantity = 1;
     const quantityValue = document.querySelector('#quantity-value');
     const showOutOfStock = () => { document.querySelector('#detail-message').innerHTML = '<p class="message error" role="alert">Sản phẩm đã hết hàng. Vui lòng chọn sách khác hoặc quay lại sau.</p>'; };
-    const updateQuantity = delta => { if (!available) return showOutOfStock(); quantity = Math.max(1, Math.min(Number(book.stock || 1), quantity + delta)); quantityValue.textContent = quantity; };
+    const quantityNote = document.querySelector('#quantity-note');
+    const updateQuantity = delta => {
+      if (!available) return showOutOfStock();
+      const stock = Number(book.stock || 1);
+      const nextQuantity = quantity + delta;
+      quantity = Math.max(1, Math.min(stock, nextQuantity));
+      quantityValue.textContent = quantity;
+      if (quantityNote) quantityNote.textContent = nextQuantity > stock ? `Tối đa ${stock} cuốn trong kho` : '';
+    };
     document.querySelector('#quantity-minus').onclick = () => updateQuantity(-1);
     document.querySelector('#quantity-plus').onclick = () => updateQuantity(1);
 
@@ -150,8 +166,8 @@
     if (coverStage && matchMedia('(hover:hover) and (pointer:fine)').matches) {
       coverStage.addEventListener('pointermove', event => {
         const box = coverStage.getBoundingClientRect();
-        const rotateY = ((event.clientX - box.left) / box.width - .5) * 7;
-        const rotateX = (.5 - (event.clientY - box.top) / box.height) * 6;
+        const rotateY = ((event.clientX - box.left) / box.width - .5) * 5;
+        const rotateX = (.5 - (event.clientY - box.top) / box.height) * 4;
         coverStage.style.setProperty('--cover-rx', `${rotateX.toFixed(2)}deg`);
         coverStage.style.setProperty('--cover-ry', `${rotateY.toFixed(2)}deg`);
         coverStage.classList.add('is-tilting');
@@ -197,17 +213,22 @@
       observer.observe(buyBtn);
     }
 
-    async function save(kind, next = '') {
+    async function save(kind, next = '', trigger = null) {
       if (!available) return showOutOfStock();
+      if (trigger?.disabled) return;
+      const originalLabel = trigger?.innerHTML;
+      let succeeded = false;
       try {
+        if (trigger) { trigger.disabled = true; trigger.classList.add('is-loading'); trigger.setAttribute('aria-busy','true'); }
         if (kind === 'cart' && !next && typeof window.flyToCart === 'function') {
           const coverEl = document.querySelector('.detail-cover') || document.querySelector('.detail-visual img, .detail-visual .cover-placeholder');
           if (coverEl) window.flyToCart(coverEl);
         }
         await api(`/api/items/${kind}`, {method:'POST',body:JSON.stringify({workId:book.workId,quantity:kind === 'cart' ? quantity : 1,selected:Boolean(next)})});
+        succeeded = true;
         if (next) return location.assign(next);
         if (kind === 'cart' && window.toast) {
-          window.toast({title:'Đã thêm vào giỏ hàng',message:`${quantity} cuốn · ${esc(book.title)}`,kind:'ok',action:{label:'Xem giỏ',href:'/cart'}});
+          window.toast({title:'Đã thêm vào giỏ hàng',message:`${quantity} cuốn · ${book.title}`,kind:'ok',image:coverUrl,action:{label:'Xem giỏ',href:'/cart'}});
         } else {
           document.querySelector('#detail-message').innerHTML = `<p class="message">${kind === 'cart' ? `Đã thêm ${quantity} cuốn vào giỏ hàng.` : 'Đã lưu vào danh sách yêu thích.'}</p>`;
         }
@@ -215,12 +236,21 @@
         if (error.status === 401) return location.assign(`/login?next=${encodeURIComponent(next || location.pathname)}`);
         if (window.toast) window.toast({title:'Không thể cập nhật',message:esc(error.message),kind:'error'});
         document.querySelector('#detail-message').innerHTML = `<p class="message error">${esc(error.message)}</p>`;
+      } finally {
+        if (trigger && document.body.contains(trigger)) {
+          trigger.classList.remove('is-loading'); trigger.removeAttribute('aria-busy');
+          if (succeeded && !next) {
+            trigger.innerHTML = kind === 'cart' ? `${icon('check')} Đã thêm` : `${icon('check')} Đã lưu`;
+            trigger.classList.add('is-success');
+            setTimeout(() => { trigger.disabled = false; trigger.classList.remove('is-success'); trigger.innerHTML = originalLabel; }, 1200);
+          } else { trigger.disabled = false; trigger.innerHTML = originalLabel; }
+        }
       }
     }
-    document.querySelector('#add-cart').onclick = () => save('cart');
-    document.querySelector('#buy-now').onclick = () => save('cart', '/checkout');
-    if (mobileBuyBtn) mobileBuyBtn.onclick = () => save('cart', '/checkout');
-    document.querySelector('#add-favorite').onclick = () => save('favorite');
+    document.querySelector('#add-cart').onclick = event => save('cart', '', event.currentTarget);
+    document.querySelector('#buy-now').onclick = event => save('cart', '/checkout', event.currentTarget);
+    if (mobileBuyBtn) mobileBuyBtn.onclick = event => save('cart', '/checkout', event.currentTarget);
+    document.querySelector('#add-favorite').onclick = event => { event.currentTarget.classList.toggle('is-favorite'); save('favorite', '', event.currentTarget); };
 
     document.querySelector('#review-form').onsubmit = async event => {
       event.preventDefault();
@@ -264,7 +294,23 @@
     try {
       const books = await api('/api/home?limit=12');
       const related = books.filter(book => book.work_id !== workId).slice(0,4);
-      document.querySelector('#related-books').innerHTML = related.map(book => `<a class="related-card" href="/books/${encodeURIComponent(book.work_id)}"><div class="book-card-cover-wrap">${cover(book)}<span class="book-card-shine"></span></div><div><b>${esc(book.title)}</b><span>${esc(book.authors || 'Chưa rõ tác giả')}</span><strong>${money(book.promotional_price || book.selling_price)}</strong></div></a>`).join('') || '<p>Chưa có sách liên quan.</p>';
+      const relatedRoot = document.querySelector('#related-books');
+      relatedRoot.innerHTML = related.map(book => `<article class="related-card"><a class="related-card-main" href="/books/${encodeURIComponent(book.work_id)}"><div class="book-card-cover-wrap">${cover(book)}<span class="book-card-shine"></span><span class="related-quick-view">Xem nhanh</span></div><div class="related-card-copy"><b>${esc(book.title)}</b><span>${esc(book.authors || 'Chưa rõ tác giả')}</span><strong>${money(book.promotional_price || book.selling_price)}</strong></div></a><button class="related-add-cart" type="button" data-work-id="${esc(book.work_id)}" ${Number(book.stock) > 0 ? '' : 'disabled'}>${icon('cart')}<span>${Number(book.stock) > 0 ? 'Thêm giỏ' : 'Hết hàng'}</span></button></article>`).join('') || '<p>Chưa có sách liên quan.</p>';
+      relatedRoot.querySelectorAll('.related-add-cart').forEach(button => button.addEventListener('click', async event => {
+        const trigger = event.currentTarget;
+        if (trigger.disabled) return;
+        const original = trigger.innerHTML;
+        try {
+          trigger.disabled = true; trigger.classList.add('is-loading');
+          await api('/api/items/cart', {method:'POST',body:JSON.stringify({workId:trigger.dataset.workId,quantity:1,selected:false})});
+          trigger.classList.remove('is-loading'); trigger.classList.add('is-success'); trigger.innerHTML = `${icon('check')}<span>Đã thêm</span>`;
+          setTimeout(() => { trigger.disabled = false; trigger.classList.remove('is-success'); trigger.innerHTML = original; }, 1200);
+        } catch (error) {
+          if (error.status === 401) return location.assign(`/login?next=${encodeURIComponent(location.pathname)}`);
+          trigger.disabled = false; trigger.classList.remove('is-loading'); trigger.innerHTML = original;
+          notify(error.message || 'Không thể thêm vào giỏ hàng');
+        }
+      }));
     } catch (_) { document.querySelector('#related-books').innerHTML = '<p>Chưa thể tải sách liên quan lúc này.</p>'; }
   }
 
