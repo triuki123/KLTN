@@ -1,0 +1,53 @@
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-tram_sach_local_2026}
+      MYSQL_DATABASE: bookstore_kltn
+    ports:
+      - "${DB_EXPOSE_PORT:-3306}:3306"
+    volumes:
+      - tram_sach_mysql:/var/lib/mysql
+      - ./database/bookstore_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./database/migrations/005_create_external_commerce.sql:/docker-entrypoint-initdb.d/02-external-commerce.sql:ro
+      - ./database/migrations/003_seed_storefront_categories.sql:/docker-entrypoint-initdb.d/03-categories.sql:ro
+      - ./database/migrations/004_seed_demo_catalog.sql:/docker-entrypoint-initdb.d/04-demo-catalog.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  web:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: bookstore_kltn
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-tram_sach_local_2026}
+      FLASK_SECRET_KEY: ${FLASK_SECRET_KEY:-local-development-secret-change-me}
+      ADMIN_NAME: ${ADMIN_NAME:-Quản trị viên}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@tramsach.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-TramSach@123}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_TLS: ${SMTP_TLS:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    ports:
+      - "3000:3000"
+    volumes:
+      - tram_sach_uploads:/app/flask_app/static/uploads
+
+volumes:
+  tram_sach_mysql:
+  tram_sach_uploads:

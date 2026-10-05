@@ -149,7 +149,16 @@ ADMIN_LISTS = {
 }
 
 def db():
-    return pymysql.connect(host="localhost", user="root", password="123456", database="bookstore_kltn", charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor, autocommit=False)
+    return pymysql.connect(
+        host=os.getenv("DB_HOST", "localhost"),
+        port=int(os.getenv("DB_PORT", "3306")),
+        user=os.getenv("DB_USER", "root"),
+        password=os.getenv("DB_PASSWORD", "123456"),
+        database=os.getenv("DB_NAME", "bookstore_kltn"),
+        charset="utf8mb4",
+        cursorclass=pymysql.cursors.DictCursor,
+        autocommit=False,
+    )
 
 def ensure_catalog_fields():
     """Add real product fields to the active catalogue without losing books."""
@@ -275,6 +284,32 @@ def ensure_password_reset_table():
     finally:con.close()
 
 ensure_password_reset_table()
+
+def ensure_development_admin():
+    """Create the first admin only when explicit bootstrap credentials are set."""
+    email = os.getenv("ADMIN_EMAIL", "").strip().lower()
+    password = os.getenv("ADMIN_PASSWORD", "")
+    if not email or not password:
+        return
+    if len(password) < 8:
+        raise RuntimeError("ADMIN_PASSWORD must contain at least 8 characters")
+    con = db()
+    try:
+        with con.cursor() as cur:
+            cur.execute("SELECT id FROM users WHERE LOWER(email)=%s", (email,))
+            if cur.fetchone():
+                return
+            cur.execute(
+                "INSERT INTO users(user_code,role_id,full_name,email,password_hash,email_verified_at) "
+                "VALUES('AD000001',1,%s,%s,%s,NOW())",
+                (os.getenv("ADMIN_NAME", "Quản trị viên"), email, ph.hash(password)),
+            )
+        con.commit()
+        print(f"[bootstrap] Created admin account: {email}")
+    finally:
+        con.close()
+
+ensure_development_admin()
 
 def json_value(value):
     if isinstance(value, Decimal): return float(value)
