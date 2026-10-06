@@ -117,10 +117,37 @@ button:disabled, .btn-brand:disabled, .pill:disabled {
   min-width: 0;
   scroll-snap-align: start;
 }
-.home-chips .home-chip.skeleton {
-  min-width: 190px;
-  color: transparent;
-  user-select: none;
+.catalog-skeleton .skeleton-text.price {
+  width: 38%;
+  height: 20px;
+  margin-top: auto;
+}
+.home-category-skeleton {
+  pointer-events: none;
+  animation: none !important;
+}
+.home-category-skeleton .category-icon-skeleton {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+}
+.home-category-skeleton > span {
+  display: grid;
+  gap: 9px;
+}
+.home-category-skeleton .skeleton-text {
+  display: block;
+  width: 72%;
+  height: 14px;
+}
+.home-category-skeleton .skeleton-text.short {
+  width: 48%;
+  height: 10px;
+}
+.home-category-skeleton .category-arrow-skeleton {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
 }
 
 /* Destructive actions are visually and spatially separated. */
