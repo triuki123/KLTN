@@ -101,6 +101,62 @@ button:disabled, .btn-brand:disabled, .pill:disabled {
 }
 @keyframes ux-spin { to { transform: rotate(360deg); } }
 
+/* Full-page waiting state: keep the future layout visible through a soft veil. */
+.home-loading-screen {
+  position: fixed;
+  z-index: 28;
+  inset: 0;
+  padding-top: 126px;
+  overflow: hidden;
+  background: rgba(250, 247, 240, .82);
+  backdrop-filter: blur(3px) saturate(.82);
+  -webkit-backdrop-filter: blur(3px) saturate(.82);
+  opacity: 1;
+  visibility: visible;
+  transition: opacity .28s ease, visibility .28s ease;
+}
+.home-loading-screen.is-done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.home-loading-shell {
+  width: min(1180px, calc(100% - 34px));
+  margin: 0 auto;
+}
+.home-loading-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(240px, .75fr);
+  gap: 64px;
+  align-items: center;
+  min-height: 340px;
+  padding: 42px;
+  border: 1px solid rgba(18, 63, 50, .08);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, .48);
+}
+.home-loading-hero > div { display: grid; gap: 16px; }
+.home-loading-hero .loading-kicker { width: 150px; height: 12px; }
+.home-loading-hero .loading-heading { width: min(560px, 92%); height: 58px; border-radius: 12px; }
+.home-loading-hero .loading-heading.short { width: min(390px, 70%); }
+.home-loading-hero .loading-copy { width: min(480px, 84%); height: 18px; margin-top: 8px; }
+.home-loading-hero .loading-action { width: 190px; height: 48px; margin-top: 12px; border-radius: 99px; }
+.home-loading-hero .loading-feature { width: min(280px, 100%); aspect-ratio: 3 / 4; justify-self: center; border-radius: 20px; }
+.home-loading-section { padding: 48px 0; }
+.home-loading-section .loading-section-title { display: block; width: min(390px, 72%); height: 40px; margin-bottom: 24px; }
+.home-loading-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.home-loading-screen .skeleton { opacity: .76; }
+
+@media (max-width: 760px) {
+  .home-loading-screen { padding-top: 110px; }
+  .home-loading-hero { grid-template-columns: 1fr; min-height: 0; padding: 24px; gap: 28px; }
+  .home-loading-hero .loading-heading { height: 38px; }
+  .home-loading-hero .loading-feature { width: 150px; aspect-ratio: 3 / 4; }
+  .home-loading-section { padding-top: 32px; }
+  .home-loading-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-loading-grid > :nth-child(n + 3) { display: none; }
+}
+
 /* Skeletons preserve the real catalogue geometry. */
 .catalog-skeleton { pointer-events: none; }
 .catalog-skeleton .skeleton-cover { aspect-ratio: 3 / 4; }
@@ -182,4 +238,5 @@ button[class*="delete-"]:hover {
 
 @media (prefers-reduced-motion: reduce) {
   .search-flow-spinner { animation-duration: 1.4s; }
+  .home-loading-screen { transition: none; }
 }

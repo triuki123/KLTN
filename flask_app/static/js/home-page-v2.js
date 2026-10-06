@@ -41,6 +41,7 @@
 
   const homeSkeletons = (count = 5) => Array.from({ length: count }, () => `<article class="skeleton-card catalog-skeleton" aria-hidden="true"><div class="skeleton skeleton-cover"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div><div class="skeleton skeleton-text price"></div></article>`).join('');
   const categorySkeletons = (count = 6) => Array.from({ length: count }, () => `<article class="home-category-card home-category-skeleton" aria-hidden="true"><i class="skeleton category-icon-skeleton"></i><span><i class="skeleton skeleton-text"></i><i class="skeleton skeleton-text short"></i></span><i class="skeleton category-arrow-skeleton"></i></article>`).join('');
+  const loadingScreen = `<div class="home-loading-screen" role="status" aria-live="polite" aria-label="Đang chuẩn bị nội dung trang chủ"><div class="home-loading-shell"><section class="home-loading-hero"><div><i class="skeleton loading-kicker"></i><i class="skeleton loading-heading"></i><i class="skeleton loading-heading short"></i><i class="skeleton loading-copy"></i><i class="skeleton loading-action"></i></div><i class="skeleton loading-feature"></i></section><section class="home-loading-section"><i class="skeleton loading-section-title"></i><div class="home-loading-grid">${homeSkeletons(4)}</div></section></div><span class="visually-hidden">Đang tải sách và danh mục…</span></div>`;
 
   const card = (book, rank = 0) => {
     const local = book.source !== 'openlibrary';
@@ -101,6 +102,7 @@
 
   root.className = 'home-experience';
   root.innerHTML = `
+    ${loadingScreen}
     <section class="home-hero-v2"><div class="home-hero-inner">
       <div class="home-hero-copy"><div class="home-kicker"><i></i>TRẠM SÁCH</div><h1>Mỗi cuốn sách mở ra<br><em>một thế giới riêng.</em></h1><p class="home-lead">Tìm cuốn sách phù hợp với nhịp sống của bạn. Tồn kho và giá bán được hiển thị rõ ràng trước khi đặt.</p>
         <div class="home-hero-actions"><a class="btn-brand" href="/books">Khám phá kho sách</a><a class="home-secondary-action" href="#home-books">Xem sách bán chạy <span>→</span></a></div>
@@ -112,6 +114,13 @@
     <section class="home-section-v2"><div class="home-section-head"><div><span class="eyebrow">Tuyển chọn hôm nay</span><h2>Khám phá nhiều chủ đề</h2></div><a class="section-link" href="/books">Xem tất cả →</a></div><div id="home-books" class="home-book-rail" aria-busy="true">${homeSkeletons()}</div></section>
     <section class="home-section-v2"><div class="home-section-head"><div><span class="eyebrow">Đọc tiếp</span><h2>Những lựa chọn khác</h2></div><a class="section-link" href="/books">Khám phá kho sách →</a></div><div id="home-new-books" class="home-book-rail" aria-busy="true">${homeSkeletons()}</div></section>
     <section class="home-service-strip"><div class="home-service-inner"><div><b>Tồn kho minh bạch</b><span>Biết số lượng trước khi mua</span></div><div><b>Giao hàng toàn quốc</b><span>Miễn phí từ 299.000đ</span></div><div><b>Thanh toán linh hoạt</b><span>Hỗ trợ thanh toán khi nhận hàng</span></div><div><b>Đổi trả trong 7 ngày</b><span>Hỗ trợ khi sách có lỗi</span></div></div></section>`;
+
+  const finishLoadingScreen = () => {
+    const screen = document.querySelector('.home-loading-screen');
+    if (!screen) return;
+    screen.classList.add('is-done');
+    window.setTimeout(() => screen.remove(), 320);
+  };
 
   const newBooksRail = document.querySelector('#home-new-books');
   const autoRailObserver = new MutationObserver(() => {
@@ -243,8 +252,10 @@
     document.querySelector('#home-categories').setAttribute('aria-busy','false');
     document.querySelector('#home-books').setAttribute('aria-busy','false');
     document.querySelector('#home-new-books').setAttribute('aria-busy','false');
+    finishLoadingScreen();
   }).catch(error => {
     document.querySelector('#home-books').innerHTML = `<div class="home-empty">${esc(error.message)}</div>`;
     document.querySelector('#home-new-books').innerHTML = '<div class="home-empty">Vui lòng thử lại sau.</div>';
+    finishLoadingScreen();
   });
 })();
