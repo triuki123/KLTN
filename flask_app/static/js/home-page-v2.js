@@ -39,6 +39,8 @@
     <span><b>${esc(category.name)}</b><small>${esc(category.description || 'Khám phá tuyển chọn sách')}</small></span><i aria-hidden="true">→</i>
   </a>`;
 
+  const homeSkeletons = (count = 5) => Array.from({ length: count }, () => `<article class="skeleton-card catalog-skeleton" aria-hidden="true"><div class="skeleton skeleton-cover"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text short"></div></article>`).join('');
+
   const card = (book, rank = 0) => {
     const local = book.source !== 'openlibrary';
     const current = Number(book.promotional_price || book.selling_price || 0);
@@ -105,9 +107,9 @@
       </div>
       <aside class="home-hero-books"><span class="eyebrow">SÁCH ĐANG ĐƯỢC QUAN TÂM</span><div id="home-hero-covers"><div class="hero-cover-skeleton"></div><div class="hero-cover-skeleton"></div><div class="hero-cover-skeleton"></div></div><a href="/books">Xem kho sách →</a></aside>
     </div></section>
-    <section class="home-section-v2"><div class="home-section-head"><div><span class="eyebrow">Bắt đầu từ điều bạn quan tâm</span><h2>Khám phá theo chủ đề</h2></div><a class="pill light" href="/categories">Xem tất cả danh mục</a></div><div id="home-categories" class="home-chips"><span class="home-chip">Đang tải chủ đề…</span></div></section>
-    <section class="home-section-v2"><div class="home-section-head"><div><span class="eyebrow">Tuyển chọn hôm nay</span><h2>Khám phá nhiều chủ đề</h2></div><a class="section-link" href="/books">Xem tất cả →</a></div><div id="home-books" class="home-book-rail"><div class="home-empty">Đang tải sách…</div></div></section>
-    <section class="home-section-v2"><div class="home-section-head"><div><span class="eyebrow">Đọc tiếp</span><h2>Những lựa chọn khác</h2></div><a class="section-link" href="/books">Khám phá kho sách →</a></div><div id="home-new-books" class="home-book-rail"><div class="home-empty">Đang tải sách mới…</div></div></section>
+    <section class="home-section-v2"><div class="home-section-head"><div><span class="eyebrow">Bắt đầu từ điều bạn quan tâm</span><h2>Khám phá theo chủ đề</h2></div><a class="pill light" href="/categories">Xem tất cả danh mục</a></div><div id="home-categories" class="home-chips" aria-busy="true"><span class="home-chip skeleton">Đang chuẩn bị chủ đề</span><span class="home-chip skeleton">Đang chuẩn bị chủ đề</span><span class="home-chip skeleton">Đang chuẩn bị chủ đề</span></div></section>
+    <section class="home-section-v2"><div class="home-section-head"><div><span class="eyebrow">Tuyển chọn hôm nay</span><h2>Khám phá nhiều chủ đề</h2></div><a class="section-link" href="/books">Xem tất cả →</a></div><div id="home-books" class="home-book-rail" aria-busy="true">${homeSkeletons()}</div></section>
+    <section class="home-section-v2"><div class="home-section-head"><div><span class="eyebrow">Đọc tiếp</span><h2>Những lựa chọn khác</h2></div><a class="section-link" href="/books">Khám phá kho sách →</a></div><div id="home-new-books" class="home-book-rail" aria-busy="true">${homeSkeletons()}</div></section>
     <section class="home-service-strip"><div class="home-service-inner"><div><b>Tồn kho minh bạch</b><span>Biết số lượng trước khi mua</span></div><div><b>Giao hàng toàn quốc</b><span>Miễn phí từ 299.000đ</span></div><div><b>Thanh toán linh hoạt</b><span>Hỗ trợ thanh toán khi nhận hàng</span></div><div><b>Đổi trả trong 7 ngày</b><span>Hỗ trợ khi sách có lỗi</span></div></div></section>`;
 
   const newBooksRail = document.querySelector('#home-new-books');
@@ -237,6 +239,9 @@
     document.querySelector('#home-categories').innerHTML = categories.map(categoryCard).join('');
     document.querySelector('#home-books').innerHTML = best.length ? best.map((book, index) => card(book, index + 1)).join('') : '<div class="home-empty">Chưa có sách bán chạy.</div>';
     document.querySelector('#home-new-books').innerHTML = newest.length ? newest.map(card).join('') : '<div class="home-empty">Vui lòng thử lại sau.</div>';
+    document.querySelector('#home-categories').setAttribute('aria-busy','false');
+    document.querySelector('#home-books').setAttribute('aria-busy','false');
+    document.querySelector('#home-new-books').setAttribute('aria-busy','false');
   }).catch(error => {
     document.querySelector('#home-books').innerHTML = `<div class="home-empty">${esc(error.message)}</div>`;
     document.querySelector('#home-new-books').innerHTML = '<div class="home-empty">Vui lòng thử lại sau.</div>';

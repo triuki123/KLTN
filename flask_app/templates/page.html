@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20260925-4">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/icons.css') }}?v=20260915-400">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/motion-polish.css') }}?v=20260916-003">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ux-flow.css') }}?v=20261006-1">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/header-experience.css') }}?v=20260925-4">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/coupon-ribbon.css') }}?v=20260915-400">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/chat-widget.css') }}?v=20260915-400">
@@ -43,9 +44,10 @@
       </picture>
     </a>
     <nav><a href="/">Trang ch&#7911;</a><a href="/books">S&#225;ch</a><a href="/categories">Danh m&#7909;c</a></nav>
-    <form class="header-search" id="header-search" action="/books" method="get" role="search">
-      <input name="q" type="search" aria-label="T&#236;m ki&#7871;m s&#225;ch" placeholder="T&#236;m t&#234;n s&#225;ch, t&#225;c gi&#7843;&hellip;" autocomplete="off">
+    <form class="header-search" id="header-search" action="/books" method="get" role="search" aria-label="T&#236;m ki&#7871;m s&#225;ch">
+      <input name="q" type="search" aria-label="T&#236;m ki&#7871;m s&#225;ch" aria-autocomplete="list" aria-controls="header-search-panel" aria-expanded="false" placeholder="T&#236;m t&#234;n s&#225;ch, t&#225;c gi&#7843;&hellip;" autocomplete="off">
       <button type="submit" aria-label="T&#236;m ki&#7871;m">&#9906;</button>
+      <div id="header-search-panel" class="search-flow-panel" role="listbox" hidden></div>
     </form>
     <div id="account-nav"><a href="/login">&#272;&#259;ng nh&#7853;p</a><a class="cart" href="/cart">Gi&#7887; h&#224;ng</a></div>
     <button class="header-hamburger" id="header-hamburger" type="button" aria-label="M&#7903; menu"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>
@@ -160,9 +162,10 @@
   {% if page not in ['detail', 'home', 'checkout'] %}<script src="{{ url_for('static', filename='js/app.js') }}?v=20260916-004"></script>{% endif %}
   {% if page == 'detail' %}<script src="{{ url_for('static', filename='js/detail-page-v3.js') }}?v=20260923-2"></script>{% endif %}
   <script src="{{ url_for('static', filename='js/header-experience.js') }}?v=20260916-004"></script>
+  <script src="{{ url_for('static', filename='js/ux-flow.js') }}?v=20261006-1"></script>
   <script src="{{ url_for('static', filename='js/chat-widget.js') }}?v=20260915-300"></script>
   {% if module == 'orders' %}<script src="{{ url_for('static', filename='js/admin-orders-collapse.js') }}?v=20260915-300"></script>{% endif %}
-  {% if page == 'home' %}<script src="{{ url_for('static', filename='js/home-page-v2.js') }}?v=20260916-004"></script>{% endif %}
+  {% if page == 'home' %}<script src="{{ url_for('static', filename='js/home-page-v2.js') }}?v=20261006-1"></script>{% endif %}
   {% if page == 'cart' %}<script src="{{ url_for('static', filename='js/cart-summary.js') }}?v=20260916-002"></script>{% endif %}
   {% if page == 'orders' %}<script src="{{ url_for('static', filename='js/orders-workflow.js') }}?v=20260915-300"></script>{% endif %}
   {% if page in ['login', 'forgot-password', 'reset-password'] %}<script src="{{ url_for('static', filename='js/password-recovery.js') }}?v=20260915-300"></script>{% endif %}
