@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if page == 'admin-login' %}&#272;&#259;ng nh&#7853;p qu&#7843;n tr&#7883; &middot; {% endif %}Tr&#7841;m S&#225;ch</title>
-  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/favicon.svg') }}?v=20260925-3">
+  <title>{% if page == 'admin-login' %}Đăng nhập quản trị &middot; {% endif %}Trạm Sách</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/favicon.svg') }}?v=20260925-4">
   <meta name="theme-color" content="#1F3D2E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20261110-002">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/icons.css') }}?v=20260915-400">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/motion-polish.css') }}?v=20260925-001">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ux-flow.css') }}?v=20261006-3">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/header-experience.css') }}?v=20261022-001">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/coupon-ribbon.css') }}?v=20260925-4">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/chat-widget.css') }}?v=20260923-001">
@@ -49,12 +50,16 @@
   <div class="announcement">Mi&#7877;n ph&#237; v&#7853;n chuy&#7875;n cho &#273;&#417;n t&#7915; 299.000&#273; &middot; &#272;&#7893;i tr&#7843; trong 7 ng&#224;y</div>
   <header class="site-header">
     <a class="brand" href="/" aria-label="Tr&#7841;m S&#225;ch — Trang ch&#7911;">
-      <img class="brand-logo-img" src="/static/icons/logo.svg?v=20260925-3" alt="Tr&#7841;m S&#225;ch — D&#7915;ng l&#7841;i, &#273;&#7885;c xa h&#417;n" width="202" height="48">
+      <picture>
+        <source media="(max-width: 470px)" srcset="/static/icons/logo-compact.svg?v=20260925-4">
+        <img class="brand-logo-img" src="/static/icons/logo.svg?v=20260925-4" alt="Tr&#7841;m S&#225;ch" width="196" height="50">
+      </picture>
     </a>
     <nav><a href="/">Trang ch&#7911;</a><a href="/books">S&#225;ch</a><a href="/categories">Danh m&#7909;c</a></nav>
-    <form class="header-search" id="header-search" action="/books" method="get" role="search">
-      <input name="q" type="search" aria-label="T&#236;m ki&#7871;m s&#225;ch" placeholder="T&#236;m t&#234;n s&#225;ch, t&#225;c gi&#7843;&hellip;" autocomplete="off">
+    <form class="header-search" id="header-search" action="/books" method="get" role="search" aria-label="T&#236;m ki&#7871;m s&#225;ch">
+      <input name="q" type="search" aria-label="T&#236;m ki&#7871;m s&#225;ch" aria-autocomplete="list" aria-controls="header-search-panel" aria-expanded="false" placeholder="T&#236;m t&#234;n s&#225;ch, t&#225;c gi&#7843;&hellip;" autocomplete="off">
       <button type="submit" aria-label="T&#236;m ki&#7871;m">&#9906;</button>
+      <div id="header-search-panel" class="search-flow-panel" role="listbox" hidden></div>
     </form>
     <div id="account-nav"><a href="/login">&#272;&#259;ng nh&#7853;p</a><a class="nav-fav" href="/favorites">&#9825; Y&#234;u th&#237;ch</a><a class="cart" href="/cart">Gi&#7887; h&#224;ng</a></div>
     <button class="header-hamburger" id="header-hamburger" type="button" aria-label="M&#7903; menu"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>
@@ -70,7 +75,7 @@
   <footer>
     <div class="footer-inner">
       <div class="footer-brand">
-        <img class="footer-logo-img" src="/static/icons/logo.svg?v=20260925-3" alt="Tr&#7841;m S&#225;ch" width="202" height="48">
+        <img class="footer-logo-img" src="/static/icons/logo.svg?v=20260925-4" alt="Tr&#7841;m S&#225;ch" width="196" height="50">
         <p class="footer-tagline">Kh&#244;ng gian s&#225;ch v&#224; tri th&#7913;c<br>d&#224;nh cho ng&#432;&#7901;i Vi&#7879;t.</p>
         <blockquote class="footer-quote">
           &#8220;M&#7895;i cu&#7889;n s&#225;ch l&#224; m&#7897;t tr&#7841;m d&#7915;ng,<br>cho m&#7897;t h&#224;nh tr&#236;nh l&#7899;n h&#417;n.&#8221;
@@ -168,6 +173,7 @@
     </a>
   </nav>
   <script src="{{ url_for('static', filename='js/header-experience.js') }}?v=20261022-001"></script>
+  <script src="{{ url_for('static', filename='js/ux-flow.js') }}?v=20261006-1"></script>
   <script src="{{ url_for('static', filename='js/cart-drawer.js') }}?v=20261006-006"></script>
   {% if page not in ['detail', 'home', 'checkout', 'favorites', 'books', 'categories', 'orders', 'account'] %}<script src="{{ url_for('static', filename='js/app.js') }}?v=20261007-001"></script>{% endif %}
   {% if page == 'favorites' %}<script src="{{ url_for('static', filename='js/favorites-experience.js') }}?v=20261006-003"></script>{% endif %}
