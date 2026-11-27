@@ -2438,3 +2438,9 @@ body[data-page="detail"] .combo-grid {
     padding: 8px !important;
   }
 }
+
+/* Tối ưu kích thước tên sách trên trang chi tiết để tiêu đề dài không bị quá khổ */
+body[data-page="detail"] .detail-info h1 {
+  font-size: clamp(24px, 2.4vw, 32px) !important;
+  line-height: 1.25 !important;
+}
