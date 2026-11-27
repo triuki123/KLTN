@@ -71,6 +71,12 @@
   font: 500 12px 'Be Vietnam Pro', sans-serif;
 }
 
+.header-search input::-webkit-search-cancel-button,
+.header-search input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .header-search input::placeholder {
   color: #7a867f;
 }
