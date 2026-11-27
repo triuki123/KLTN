@@ -44,6 +44,7 @@
 
 .header-search {
   width: 100%;
+  min-width: 0;
   height: 44px;
   display: flex;
   align-items: center;
@@ -51,6 +52,7 @@
   border: 1px solid rgba(17, 41, 31, 0.13);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.82);
+  overflow: hidden;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
