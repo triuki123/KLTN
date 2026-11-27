@@ -669,3 +669,65 @@ body[data-page="home"] #home-showcase-section {
     font-size: 12px !important;
   }
 }
+
+/* ── Comprehensive Admin Responsive (Laptop, Tablet, Mobile) ── */
+.admin-layout,
+.admin-content,
+.admin-view {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-view table {
+  width: 100%;
+}
+
+.table-wrap,
+.admin-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 1280px) {
+  .admin-layout {
+    grid-template-columns: 220px minmax(0, 1fr) !important;
+    gap: 18px !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .admin-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 16px !important;
+  }
+  .admin-orders-grid,
+  .admin-form-grid,
+  .reports-grid,
+  .two-col {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .admin-view {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-content {
+    padding: 0 4px;
+  }
+  .admin-toolbar,
+  .admin-filters,
+  .order-actions,
+  .admin-header-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .admin-toolbar input,
+  .admin-toolbar select,
+  .admin-filters input,
+  .admin-filters select {
+    width: 100% !important;
+  }
+}
