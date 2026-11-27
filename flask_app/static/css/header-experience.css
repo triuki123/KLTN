@@ -8,7 +8,20 @@
 
 @media (max-width: 1450px) {
   .brand-tagline { display: none; }
-  .site-header { grid-template-columns: 150px auto minmax(210px, 330px) auto; }
+  .site-header { grid-template-columns: minmax(150px, 196px) auto minmax(160px, 280px) auto; gap: clamp(10px, 1.4vw, 20px); }
+}
+
+.site-header .brand {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.site-header .brand-logo-img {
+  max-width: 100%;
+  height: auto;
+  max-height: 46px;
+  object-fit: contain;
 }
 
 .site-header nav {
