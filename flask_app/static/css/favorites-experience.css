@@ -1,0 +1,665 @@
+/* ─── FAVORITES EXPERIENCE (TRANG SÁCH YÊU THÍCH) ─── */
+.favorites-page-shell {
+  width: min(1200px, calc(100% - 36px));
+  margin: 40px auto 60px;
+}
+
+.favorites-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(17, 41, 31, 0.08);
+  margin-bottom: 32px;
+}
+
+.favorites-header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.favorites-header-title h1 {
+  margin: 0;
+  font-family: 'Lora', Georgia, serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #11291f;
+  letter-spacing: -0.01em;
+}
+
+.favorites-badge-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #fbeee8;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.favorites-header-desc {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: #556b60;
+}
+
+.favorites-browse-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #176a45;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(23, 106, 69, 0.08);
+  transition: all 0.2s ease;
+}
+
+.favorites-browse-link:hover {
+  background: #176a45;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* ─── FAVORITES GRID ─── */
+.favorites-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+}
+
+@media (max-width: 1024px) {
+  .favorites-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 720px) {
+  .favorites-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .favorites-header-title h1 {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 480px) {
+  .favorites-page-shell {
+    margin: 24px auto 48px;
+  }
+  .favorites-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+/* ─── FAVORITE BOOK CARD ─── */
+.fav-card {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid rgba(17, 41, 31, 0.09);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 16px rgba(17, 41, 31, 0.04);
+  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.24s ease, border-color 0.24s ease;
+  overflow: hidden;
+}
+
+.fav-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(17, 41, 31, 0.1);
+  border-color: rgba(23, 106, 69, 0.25);
+}
+
+.fav-card.removing {
+  opacity: 0 !important;
+  transform: scale(0.88) translateY(12px) !important;
+  transition: opacity 0.28s ease, transform 0.28s ease !important;
+}
+
+/* Cover Wrapper */
+.fav-card-cover-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f4efe6;
+  margin-bottom: 14px;
+}
+
+.fav-card-cover-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.fav-card:hover .fav-card-cover-wrap img {
+  transform: scale(1.04);
+}
+
+.fav-cover-fallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: #bf5032;
+  font-family: 'Lora', serif;
+  font-size: 36px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #ede8dc 0%, #e2dacf 100%);
+}
+
+/* Remove button on top-right of cover */
+.fav-remove-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(17, 41, 31, 0.12);
+  display: grid;
+  place-items: center;
+  color: #e53935;
+  cursor: pointer;
+  z-index: 5;
+  padding: 0;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, color 0.2s ease;
+}
+
+.fav-remove-btn:hover {
+  transform: scale(1.15);
+  background: #fff0f0;
+  color: #d32f2f;
+  box-shadow: 0 6px 16px rgba(229, 57, 53, 0.25);
+}
+
+.fav-remove-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+/* Card Details */
+.fav-card-content {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.fav-card-title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #11291f;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-decoration: none;
+}
+
+.fav-card-title:hover {
+  color: #176a45;
+}
+
+.fav-card-author {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  color: #64746b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fav-card-bottom {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fav-card-price-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fav-card-price {
+  font-size: 16px;
+  font-weight: 800;
+  color: #176a45;
+}
+
+.fav-card-stock {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4b6354;
+  background: #edf7f0;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.fav-card-stock.out {
+  color: #991b1b;
+  background: #fef2f2;
+}
+
+/* Card Action Buttons */
+.fav-card-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.fav-btn-cart {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #176a45;
+  color: #ffffff;
+  border: none;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.fav-btn-cart:hover:not(:disabled) {
+  background: #114c32;
+  transform: translateY(-1px);
+}
+
+.fav-btn-cart:disabled {
+  background: #d5dbd7;
+  color: #8c9d92;
+  cursor: not-allowed;
+}
+
+.fav-btn-buy {
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: #f8f6f0;
+  color: #11291f;
+  border: 1px solid rgba(17, 41, 31, 0.12);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fav-btn-buy:hover:not(:disabled) {
+  background: #ece7dc;
+  color: #11291f;
+}
+
+.fav-btn-buy:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── EMPTY STATE & AUTH PROMPT ─── */
+.favorites-empty-panel {
+  max-width: 580px;
+  margin: 50px auto;
+  padding: 48px 32px;
+  background: #ffffff;
+  border: 1px solid rgba(17, 41, 31, 0.08);
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 8px 30px rgba(17, 41, 31, 0.04);
+}
+
+.favorites-empty-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  background: #fff0f0;
+  display: grid;
+  place-items: center;
+  color: #e53935;
+}
+
+.favorites-empty-icon svg {
+  width: 36px;
+  height: 36px;
+}
+
+.favorites-empty-panel h2 {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 24px;
+  color: #11291f;
+  margin: 0 0 10px;
+}
+
+.favorites-empty-panel p {
+  font-size: 14.5px;
+  color: #556b60;
+  line-height: 1.6;
+  margin: 0 0 26px;
+}
+
+.favorites-empty-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.favorites-empty-actions .btn-primary {
+  padding: 12px 24px;
+  border-radius: 999px;
+  background: #176a45;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.favorites-empty-actions .btn-primary:hover {
+  background: #114c32;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(23, 106, 69, 0.25);
+}
+
+.favorites-empty-actions .btn-secondary {
+  padding: 12px 24px;
+  border-radius: 999px;
+  background: #f8f6f0;
+  color: #11291f;
+  border: 1px solid rgba(17, 41, 31, 0.12);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.favorites-empty-actions .btn-secondary:hover {
+  background: #ece7dc;
+}
+
+/* ─── HEADER ACTIONS & BATCH ADD TO CART ─── */
+.favorites-header-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ─── FAVORITES CHECKBOX SELECTION SYSTEM ─── */
+.fav-selection-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  border: 1px solid rgba(17, 41, 31, 0.12);
+  border-radius: 999px;
+  padding: 4px 6px 4px 16px;
+  box-shadow: 0 2px 10px rgba(17, 41, 31, 0.04);
+}
+
+.fav-select-all-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1f3d2e;
+  user-select: none;
+}
+
+.fav-select-all-control input[type="checkbox"],
+.fav-card-select-label input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.fav-custom-checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 2px solid #85968b;
+  background: #ffffff;
+  display: inline-grid;
+  place-items: center;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.fav-custom-checkbox::after {
+  content: "";
+  width: 5px;
+  height: 9px;
+  border: solid #ffffff;
+  border-width: 0 2.2px 2.2px 0;
+  transform: rotate(45deg) scale(0);
+  margin-top: -2px;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+input:checked + .fav-custom-checkbox {
+  background: #176a45;
+  border-color: #176a45;
+}
+
+input:checked + .fav-custom-checkbox::after {
+  transform: rotate(45deg) scale(1);
+}
+
+input:indeterminate + .fav-custom-checkbox {
+  background: #176a45;
+  border-color: #176a45;
+}
+
+input:indeterminate + .fav-custom-checkbox::after {
+  content: "";
+  width: 8px;
+  height: 2.2px;
+  border: none;
+  background: #ffffff;
+  transform: rotate(0) scale(1);
+  margin-top: 0;
+}
+
+/* Checkbox button on Book Card */
+.fav-card-select-label {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(17, 41, 31, 0.12);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 5;
+  padding: 0;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease;
+}
+
+.fav-card-select-label:hover {
+  transform: scale(1.12);
+  background: #ffffff;
+}
+
+.fav-card.is-selected {
+  border-color: rgba(23, 106, 69, 0.35);
+  box-shadow: 0 6px 20px rgba(23, 106, 69, 0.08);
+}
+
+.fav-card.is-unselected {
+  opacity: 0.72;
+  border-color: rgba(17, 41, 31, 0.07);
+}
+
+.fav-card.is-unselected:hover {
+  opacity: 0.95;
+}
+
+.fav-btn-add-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: #176a45;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(23, 106, 69, 0.2);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fav-btn-add-all:hover:not(:disabled) {
+  background: #114c32;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(23, 106, 69, 0.32);
+}
+
+.fav-btn-add-all:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #73887d;
+  box-shadow: none;
+}
+
+/* ─── TODAY'S DEAL PROMO BADGE ON CARD ─── */
+.fav-promo-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 4;
+  background: linear-gradient(135deg, #c2410c, #ea580c);
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(194, 65, 12, 0.35);
+  pointer-events: none;
+  letter-spacing: 0.02em;
+}
+
+/* ─── RECOMMENDATIONS RAIL ON FAVORITES PAGE ─── */
+.fav-recommendations-section {
+  margin-top: 60px;
+  padding-top: 36px;
+  border-top: 1px dashed rgba(17, 41, 31, 0.15);
+}
+
+.fav-recommendations-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.fav-recommendations-eyebrow {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #176a45;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+.fav-recommendations-head h2 {
+  margin: 0;
+  font-family: 'Lora', Georgia, serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: #11291f;
+}
+
+.fav-recommendations-more {
+  font-size: 13px;
+  font-weight: 700;
+  color: #176a45;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.fav-recommendations-more:hover {
+  color: #114c32;
+  text-decoration: underline;
+}
+
+.fav-rec-card {
+  background: #faf8f5;
+  border-color: rgba(17, 41, 31, 0.06);
+}
+
+.fav-rec-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 3;
+  background: rgba(17, 41, 31, 0.85);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  backdrop-filter: blur(4px);
+}
+
+.fav-btn-view {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 9px 12px;
+  background: #ffffff;
+  border: 1px solid rgba(23, 106, 69, 0.25);
+  border-radius: 999px;
+  color: #176a45;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.fav-btn-view:hover {
+  background: #176a45;
+  color: #ffffff;
+}
+
+

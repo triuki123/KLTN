@@ -138,3 +138,46 @@ body[data-page="home"] .home-service-inner span { color:rgba(255,250,240,.68); f
 @media(max-width:560px) { #home-books { grid-template-columns:repeat(2,minmax(0,1fr))!important; gap:12px!important; } }
 @media(prefers-reduced-motion:reduce) { .hero-cover,.hero-cover:nth-child(2){animation:none;opacity:1;transform:none}.hero-cover:hover{transform:none} }
 @media(max-width:560px) { .hero-cover{flex-basis:32%}.hero-cover-text b{font-size:11px}.hero-cover-overlay a{padding:6px 8px;font-size:10px} }
+
+/* Phone hero: prevent forced orphan lines and keep actions easy to tap. */
+@media(max-width:700px) {
+  .home-hero-v2 { padding:34px 0 38px; }
+  .home-hero-inner { width:calc(100% - 32px); }
+  .home-hero-v2 h1 {
+    max-width:100%;
+    margin:16px 0 18px;
+    font-size:clamp(38px,10.5vw,44px);
+    line-height:1.02;
+    letter-spacing:-.045em;
+    text-wrap:balance;
+  }
+  .home-hero-v2 h1 br { display:none; }
+  .home-hero-v2 h1 em { display:block; margin-top:4px; }
+  .home-lead { font-size:14px; line-height:1.7; }
+  .home-hero-actions { align-items:stretch; }
+  .home-hero-actions .btn-brand,
+  .home-secondary-action { flex:1 1 100%; min-height:54px; }
+  .home-hero-highlights {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:0;
+    width:100%;
+  }
+  .home-hero-highlight { min-width:0; padding:0 12px; }
+  .home-hero-highlight b { font-size:14px; }
+  .home-hero-highlight span { line-height:1.35; }
+}
+
+@media(max-width:560px) {
+  .home-hero-v2::after { right:-250px; top:-220px; }
+  .home-kicker { font-size:11px; }
+  .home-hero-highlight { padding:0 9px; }
+  .home-hero-highlight b { font-size:12px; }
+}
+
+@media(max-width:390px) {
+  .home-hero-inner { width:calc(100% - 26px); }
+  .home-hero-v2 h1 { font-size:36px; }
+  .home-lead { font-size:13px; }
+  .home-hero-highlight span { font-size:9px; }
+}

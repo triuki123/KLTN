@@ -2,7 +2,28 @@
   const root=document.querySelector('#app'),page=document.body.dataset.page;
   const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const request=async(url,options={})=>{const response=await fetch(url,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...options});const payload=await response.json().catch(()=>({}));if(!response.ok||payload.success===false)throw new Error(payload.message||'Không thể xử lý yêu cầu');return payload.data};
-  function addForgotLink(){if(document.querySelector('.forgot-password-link'))return true;const password=document.querySelector('.auth-card input[name="password"]');if(!password)return false;password.insertAdjacentHTML('afterend','<a class="forgot-password-link" href="/forgot-password">Quên mật khẩu?</a>');return true}
+  function addForgotLink(){
+    if(document.querySelector('.forgot-password-link')) return true;
+    const pwdInput = document.querySelector('.auth-card input[name="password"]');
+    if(!pwdInput) return false;
+    const label = pwdInput.closest('label');
+    if(!label) return false;
+    // Check if label already has header
+    let header = label.querySelector('.password-label-header');
+    if (!header) {
+      header = document.createElement('div');
+      header.className = 'password-label-header';
+      header.innerHTML = '<span>Mật khẩu</span><a class="forgot-password-link" href="/forgot-password">Quên mật khẩu?</a>';
+      // If the label contains text "Mật khẩu" directly, replace label text node
+      for (const node of [...label.childNodes]) {
+        if (node.nodeType === Node.TEXT_NODE && node.nodeValue.includes('Mật khẩu')) {
+          node.remove();
+        }
+      }
+      label.insertBefore(header, label.firstChild);
+    }
+    return true;
+  }
   if(page==='login'){if(!addForgotLink()){const observer=new MutationObserver(()=>{if(addForgotLink())observer.disconnect()});observer.observe(root,{childList:true,subtree:true})}return}
   if(page==='forgot-password'){
     root.innerHTML=`<section class="recovery-wrap"><form id="forgot-form" class="recovery-card"><span class="eyebrow">KHÔI PHỤC TÀI KHOẢN</span><h1>Quên mật khẩu?</h1><p>Nhập email đã đăng ký. Chúng tôi sẽ gửi liên kết tạo mật khẩu mới có hiệu lực trong 30 phút.</p><label for="recovery-email">Email</label><input id="recovery-email" name="email" type="email" autocomplete="email" required><div id="recovery-message"></div><button class="btn-brand">Gửi liên kết đặt lại</button><a class="recovery-back" href="/login">← Trở lại đăng nhập</a></form></section>`;

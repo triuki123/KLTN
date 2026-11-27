@@ -1,0 +1,528 @@
+/* Admin Dashboard UX/UI Stylesheet */
+.admin-dashboard-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Header & Quick Actions */
+.dashboard-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: #ffffff;
+  padding: 20px 24px;
+  border-radius: 14px;
+  border: 1px solid rgba(17, 41, 31, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.dashboard-header-title h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a2e22;
+  margin: 2px 0 6px;
+}
+
+.dashboard-header-desc {
+  font-size: 13.5px;
+  color: #5d6e64;
+  margin: 0;
+}
+
+.dashboard-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dashboard-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.18s ease;
+  border: 1px solid transparent;
+}
+
+.dashboard-action-btn.btn-tiki {
+  background: #0b74e5;
+  color: #ffffff !important;
+}
+
+.dashboard-action-btn.btn-tiki:hover {
+  background: #0961c2;
+  transform: translateY(-1px);
+}
+
+.dashboard-action-btn.btn-new-book {
+  background: #1f3d2e;
+  color: #ffffff !important;
+}
+
+.dashboard-action-btn.btn-new-book:hover {
+  background: #2a523e;
+  transform: translateY(-1px);
+}
+
+.dashboard-action-btn.btn-outline {
+  background: #f8faf8;
+  color: #1f3d2e !important;
+  border-color: rgba(31, 61, 46, 0.2);
+}
+
+.dashboard-action-btn.btn-outline:hover {
+  background: #eef3ef;
+  border-color: rgba(31, 61, 46, 0.4);
+}
+
+/* 4 KPI Stat Cards */
+.dashboard-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+@media (max-width: 1250px) {
+  .dashboard-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+.kpi-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 20px;
+  border: 1px solid rgba(17, 41, 31, 0.08);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.kpi-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.kpi-card-label {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #63756a;
+}
+
+.kpi-icon-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.kpi-card.kpi-revenue .kpi-icon-badge {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.kpi-card.kpi-orders .kpi-icon-badge {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.kpi-card.kpi-books .kpi-icon-badge {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.kpi-card.kpi-stock .kpi-icon-badge {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: #11291f;
+  line-height: 1.15;
+  margin-bottom: 8px;
+}
+
+.kpi-subtext {
+  font-size: 12.5px;
+  color: #6d7f74;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kpi-subtext strong {
+  color: #1a2e22;
+}
+
+.badge-pulse {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 0 rgba(245, 158, 11, 0.4);
+  animation: pulse-ring 2s infinite;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+  70% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+/* Main 2-column Dashboard Grid */
+.dashboard-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 1250px) {
+  .dashboard-main-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+.dashboard-panel {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 22px;
+  border: 1px solid rgba(17, 41, 31, 0.08);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f4f1;
+}
+
+.dashboard-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a2e22;
+  margin: 0;
+}
+
+.dashboard-panel-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0b74e5;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dashboard-panel-link:hover {
+  text-decoration: underline;
+}
+
+/* Recent Orders Table inside Dashboard */
+.dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.dashboard-table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6d7f74;
+  padding: 8px 12px;
+  border-bottom: 1px solid #eef2ef;
+  text-transform: uppercase;
+}
+
+.dashboard-table td {
+  padding: 12px;
+  font-size: 13.5px;
+  color: #2b3a32;
+  border-bottom: 1px solid #f6f8f6;
+  vertical-align: middle;
+}
+
+.dashboard-table tr:last-child td {
+  border-bottom: none;
+}
+
+.dashboard-table tr:hover td {
+  background: #fbfdfb;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.status-chip.status-PENDING { background: #fef3c7; color: #b45309; }
+.status-chip.status-CONFIRMED { background: #e0e7ff; color: #4338ca; }
+.status-chip.status-PREPARING { background: #f3e8ff; color: #7e22ce; }
+.status-chip.status-SHIPPING { background: #e0f2fe; color: #0369a1; }
+.status-chip.status-COMPLETED { background: #dcfce7; color: #15803d; }
+.status-chip.status-CANCELLED { background: #f3f4f6; color: #6b7280; }
+
+/* 7-Day Revenue Mini Chart */
+.chart-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.chart-bars-wrap {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 140px;
+  padding: 10px 0 0;
+  gap: 12px;
+  border-bottom: 1px solid #eef2ef;
+}
+
+.chart-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.chart-bar-fill {
+  width: 100%;
+  max-width: 38px;
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  border-radius: 6px 6px 0 0;
+  min-height: 4px;
+  transition: height 0.4s ease, filter 0.2s;
+  cursor: pointer;
+  position: relative;
+}
+
+.chart-bar-fill:hover {
+  filter: brightness(1.15);
+}
+
+.chart-bar-label {
+  font-size: 11px;
+  color: #718277;
+  white-space: nowrap;
+}
+
+.chart-bar-value {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1a2e22;
+  margin-bottom: 2px;
+}
+
+/* Top Selling & Low Stock List Items */
+.dashboard-book-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dashboard-book-item {
+  display: grid;
+  grid-template-columns: 26px 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fbfcfb;
+  border: 1px solid #f0f4f1;
+  transition: background 0.15s ease;
+  min-width: 0;
+}
+
+.dashboard-book-item:hover {
+  background: #f4f7f5;
+}
+
+.rank-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rank-1 { background: #fef08a; color: #854d0e; }
+.rank-2 { background: #e2e8f0; color: #475569; }
+.rank-3 { background: #fed7aa; color: #9a3412; }
+.rank-4, .rank-5 { background: #f1f5f9; color: #64748b; }
+
+.dashboard-book-thumb {
+  width: 40px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  background: #e9ecef;
+  flex-shrink: 0;
+}
+
+.dashboard-book-info {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dashboard-book-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1a2e22;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0 0 3px;
+}
+
+.dashboard-book-sub {
+  font-size: 11.5px;
+  color: #63756a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.dashboard-book-stat {
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding-left: 8px;
+}
+
+.stat-sold {
+  color: #0b74e5;
+}
+
+.stat-lowstock {
+  color: #dc2626;
+  background: #fee2e2;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+/* Modules Shortcuts Grid */
+.dashboard-modules-header {
+  margin-top: 10px;
+}
+
+.dashboard-modules-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .dashboard-modules-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.module-shortcut-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(17, 41, 31, 0.08);
+  text-decoration: none;
+  color: #1a2e22;
+  transition: all 0.2s ease;
+}
+
+.module-shortcut-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(11, 116, 229, 0.4);
+  box-shadow: 0 4px 14px rgba(11, 116, 229, 0.08);
+}
+
+.module-shortcut-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #f0f4f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+
+.module-shortcut-card:hover .module-shortcut-icon {
+  background: #e0f2fe;
+  color: #0b74e5;
+}
+
+.module-shortcut-text b {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.module-shortcut-text small {
+  font-size: 11.5px;
+  color: #63756a;
+}
+

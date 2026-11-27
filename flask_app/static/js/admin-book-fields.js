@@ -1,5 +1,4 @@
 (() => {
-  if (document.body.dataset.module !== 'books') return;
   const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   let books=[];
   fetch('/api/admin/data/books').then(response=>response.json()).then(body=>books=body.data||[]).catch(()=>{});

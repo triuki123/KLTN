@@ -6,6 +6,7 @@ import hashlib
 import smtplib
 import time as _time
 from email.message import EmailMessage
+from email.utils import formataddr
 import unicodedata
 from pathlib import Path
 from functools import wraps
@@ -15,8 +16,24 @@ import pymysql
 import requests
 from argon2 import PasswordHasher
 
+# Auto-load .env configuration
+_env_file = Path(__file__).resolve().parent.parent / ".env"
+if _env_file.exists():
+    with open(_env_file, "r", encoding="utf-8") as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _v = _line.split("=", 1)
+                os.environ[_k.strip()] = _v.strip().strip('"').strip("'")
+try:
+    from .rag_service import STORE_POLICIES, build_documents, generate_answer, retrieve
+except ImportError:
+    # Support running this file directly: `python flask_app/app.py`.
+    from rag_service import STORE_POLICIES, build_documents, generate_answer, retrieve
+
 # In-memory TTL cache. Key -> (expires_at, payload).
 _CACHE = {}
+_CHAT_REQUESTS = {}
 def cache_get(key):
     entry = _CACHE.get(key)
     if not entry: return None
@@ -27,6 +44,27 @@ def cache_get(key):
     return payload
 def cache_set(key, payload, ttl):
     _CACHE[key] = (_time.time() + ttl, payload)
+
+def invalidate_home_cache():
+    for key in list(_CACHE):
+        if str(key).startswith("home:"):
+            _CACHE.pop(key, None)
+
+def chat_rate_limited(identity, limit=12, window=60):
+    """Small in-memory guard against accidental double submits and API abuse."""
+    now = _time.time()
+    recent = [stamp for stamp in _CHAT_REQUESTS.get(identity, ()) if stamp > now - window]
+    if len(recent) >= limit:
+        _CHAT_REQUESTS[identity] = recent
+        return True
+    recent.append(now)
+    _CHAT_REQUESTS[identity] = recent
+    if len(_CHAT_REQUESTS) > 2000:
+        cutoff = now - window
+        for key in list(_CHAT_REQUESTS):
+            if not _CHAT_REQUESTS[key] or _CHAT_REQUESTS[key][-1] < cutoff:
+                _CHAT_REQUESTS.pop(key, None)
+    return False
 
 from argon2.exceptions import VerifyMismatchError
 from werkzeug.utils import secure_filename
@@ -42,7 +80,7 @@ def load_local_env():
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        os.environ[key.strip()] = value.strip().strip('"').strip("'")
 
 
 load_local_env()
@@ -107,7 +145,7 @@ def add_restored_admin_assets(response):
             # storefront renderer afterwards can overwrite or interrupt it.
             extra_scripts = ''
         elif request.path in ("/books", "/categories"):
-            extra_scripts = '<script src="/static/js/storefront-sync.js"></script><script src="/static/js/storefront-catalog.js"></script><script src="/static/js/openlibrary-client.js"></script>'
+            extra_scripts = '<script src="/static/js/storefront-sync.js"></script><script src="/static/js/storefront-catalog.js?v=20260924-1"></script><script src="/static/js/openlibrary-client.js"></script>'
         elif request.path == "/orders":
             extra_scripts = '<script src="/static/js/orders-experience.js"></script>'
         elif request.path == "/account":
@@ -115,7 +153,7 @@ def add_restored_admin_assets(response):
         elif request.path == "/checkout":
             extra_scripts = '<script src="/static/js/checkout.js"></script><script src="/static/js/checkout-coupon.js?v=20260914-4"></script><script src="/static/js/storefront-sync.js"></script>'
         elif admin_workspace:
-            extra_scripts = '<script src="/static/js/admin-shell.js?v=20260914-2"></script><script src="/static/js/admin-shell-edit.js?v=20260915-2"></script><script src="/static/js/admin-book-fields.js"></script><script src="/static/js/admin-coupon-picker.js?v=20260914-3"></script><script src="/static/js/admin-cover-upload.js"></script>'
+            extra_scripts = '<script src="/static/js/admin-shell.js?v=20261110-002"></script><script src="/static/js/admin-shell-edit.js?v=20261006-002"></script><script src="/static/js/admin-book-fields.js"></script><script src="/static/js/admin-coupon-picker.js?v=20260914-3"></script><script src="/static/js/admin-cover-upload.js"></script>'
         else:
             extra_scripts = ''
         response.set_data(html.replace("</body>", extra_scripts + "</body>"))
@@ -135,7 +173,7 @@ def add_restored_admin_assets(response):
 
 ADMIN_LISTS = {
     "account": "SELECT u.id,u.user_code,u.full_name,u.email,u.phone,r.name AS role,u.status,u.last_login_at,u.created_at FROM users u JOIN roles r ON r.id=u.role_id ORDER BY CASE WHEN r.code='ADMIN' THEN 0 ELSE 1 END,u.created_at DESC",
-    "customers": "SELECT u.id,u.user_code,u.full_name,u.email,u.phone,u.status,u.created_at,COUNT(o.id) order_count FROM users u JOIN roles r ON r.id=u.role_id AND r.code='CUSTOMER' LEFT JOIN external_orders o ON o.user_id=u.id GROUP BY u.id ORDER BY u.created_at DESC",
+    "customers": "SELECT u.id,u.user_code,u.full_name,u.email,u.phone,u.status,u.created_at,COUNT(DISTINCT o.id) AS order_count,COALESCE(SUM(CASE WHEN o.status != 'CANCELLED' THEN o.total_amount ELSE 0 END), 0) AS total_spent FROM users u JOIN roles r ON r.id=u.role_id AND r.code='CUSTOMER' LEFT JOIN external_orders o ON o.user_id=u.id GROUP BY u.id ORDER BY u.created_at DESC",
     "categories": "SELECT id,name,slug,description,display_order,status,created_at FROM categories ORDER BY display_order,name",
     "authors": "SELECT id,name,slug,biography,status,created_at FROM authors ORDER BY created_at DESC",
     "publishers": "SELECT id,name,slug,email,phone,address,status,created_at FROM publishers ORDER BY created_at DESC",
@@ -281,6 +319,13 @@ def json_value(value):
     if hasattr(value, "isoformat"): return value.isoformat()
     return value
 
+def coupon_datetime(value):
+    """Normalize the browser datetime-local value for MySQL and reject malformed input."""
+    text=str(value or "").strip().replace("T"," ")
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?",text):
+        raise ValueError("Ngày giờ bắt đầu hoặc kết thúc không hợp lệ.")
+    return text if len(text)==19 else f"{text}:00"
+
 def api_user(role=None):
     def deco(fn):
         @wraps(fn)
@@ -306,6 +351,19 @@ def upload_cover():
     filename = f"{uuid.uuid4().hex}.{extension}"
     image.save(UPLOAD_DIR / filename)
     return jsonify(success=True, data={"url": f"/static/uploads/covers/{filename}"}), 201
+
+@app.post("/api/admin/crawler/tiki")
+@api_user("ADMIN")
+def crawl_tiki_endpoint():
+    data = request.get_json(silent=True) or {}
+    limit_per_category = max(1, min(30, int(data.get("limitPerCategory") or 10)))
+    try:
+        from scripts.crawl_tiki import crawl_tiki_books
+        total = crawl_tiki_books(limit_per_category)
+        invalidate_home_cache()
+        return jsonify(success=True, message=f"Đã cào và đồng bộ thành công {total} cuốn sách từ Nhà Sách Tiki (c8322)!", data={"total": total})
+    except Exception as exc:
+        return jsonify(success=False, message=f"Lỗi khi cào dữ liệu: {exc}"), 500
 
 @app.get("/")
 def home(): return render_template("page.html", page="home")
@@ -334,6 +392,11 @@ def cart_page():
         finally:
             con.close()
     return render_template("page.html", page="cart")
+@app.get("/api/health")
+@app.get("/health")
+def health_check():
+    return jsonify(status="ok", timestamp=_time.time()), 200
+
 @app.get("/favorites")
 def favorites_page(): return render_template("page.html", page="favorites")
 @app.get("/orders")
@@ -388,6 +451,7 @@ def home_catalog():
     if not remaining:
         cache_set(cache_key, local_rows, 300)
         return jsonify(success=True, data=local_rows)
+
     try:
         response = openlibrary_get("https://openlibrary.org/search.json", params={"q": "language:vie", "limit": remaining, "fields": "key,title,author_name,cover_i,first_publish_year,edition_count"}, timeout=(3, 8))
         response.raise_for_status()
@@ -399,6 +463,28 @@ def home_catalog():
     except (requests.RequestException, ValueError):
         cache_set(cache_key, local_rows, 60)
         return jsonify(success=True, data=local_rows)
+
+@app.get("/api/storefront-program-tags")
+def public_book_program_tags():
+    """Expose coupon assignments for storefront badges without changing catalog data."""
+    con=db()
+    try:
+        with con.cursor() as cur:
+            cur.execute("""SELECT work_id,code,name,discount_type,discount_value,minimum_order,ends_at,program_count,is_active
+                FROM (
+                    SELECT cp.work_id,c.code,c.name,c.discount_type,c.discount_value,c.minimum_order,c.ends_at,
+                        COUNT(*) OVER(PARTITION BY cp.work_id) program_count,
+                        (c.status='ACTIVE' AND c.starts_at<=NOW() AND c.ends_at>=NOW()
+                            AND (c.usage_limit IS NULL OR c.used_count<c.usage_limit)) is_active,
+                        ROW_NUMBER() OVER(PARTITION BY cp.work_id ORDER BY
+                            (c.status='ACTIVE' AND c.starts_at<=NOW() AND c.ends_at>=NOW()
+                                AND (c.usage_limit IS NULL OR c.used_count<c.usage_limit)) DESC,c.id DESC) priority
+                    FROM external_coupon_products cp JOIN coupons c ON c.id=cp.coupon_id
+                ) ranked WHERE priority=1""")
+            rows=[{"workId":row["work_id"],"programCount":int(row["program_count"] or 0),"active":bool(row["is_active"]),"code":row["code"],"name":row["name"],"discountType":row["discount_type"],"discountValue":json_value(row["discount_value"]),"minimumOrder":json_value(row["minimum_order"]),"endsAt":json_value(row["ends_at"])} for row in cur.fetchall()]
+            return jsonify(success=True,data=rows)
+    finally:
+        con.close()
 
 @app.get("/api/categories")
 def public_categories():
@@ -415,13 +501,515 @@ def public_categories():
     finally:
         con.close()
 
+@app.get("/api/books/<work_id>/combo")
+def book_combo_endpoint(work_id):
+    """Returns custom multi-book combo if configured by Admin, or falls back to top algorithmic partners."""
+    con = db()
+    try:
+        with con.cursor() as cur:
+            # 1. First check if Admin configured custom combo(s) for this book
+            cur.execute("""
+                SELECT c.id, c.main_work_id, c.paired_work_id, c.combo_title, c.discount_percent,
+                       p.work_id, p.title, p.authors, p.cover_url, p.selling_price, p.promotional_price,
+                       p.stock_quantity, p.sold_count
+                FROM external_book_combos c
+                JOIN external_book_inventory p ON p.work_id = c.paired_work_id
+                WHERE c.main_work_id = %s AND c.status = 'ACTIVE' AND p.status = 'ACTIVE' AND p.stock_quantity > 0
+                ORDER BY c.id ASC
+                LIMIT 5
+            """, (work_id,))
+            custom_rows = cur.fetchall()
+            if custom_rows:
+                partners = [{
+                    "work_id": r["work_id"],
+                    "workId": r["work_id"],
+                    "title": r["title"],
+                    "authors": r["authors"],
+                    "cover_url": r["cover_url"],
+                    "selling_price": json_value(r["selling_price"]),
+                    "promotional_price": json_value(r["promotional_price"]),
+                    "stock_quantity": r["stock_quantity"]
+                } for r in custom_rows]
+                return jsonify(success=True, data={
+                    "is_custom": True,
+                    "combo_title": custom_rows[0]["combo_title"] or "Thường được mua cùng nhau",
+                    "discount_percent": custom_rows[0]["discount_percent"] or 10,
+                    "partner": partners[0],
+                    "partners": partners
+                })
+
+            # 2. Fallback: find top related books by same author or category
+            cur.execute("SELECT authors, category_id FROM external_book_inventory WHERE work_id=%s", (work_id,))
+            target = cur.fetchone()
+            author = (target.get("authors") or "").split(",")[0].strip() if target else ""
+            cat_id = target.get("category_id") if target else None
+
+            conds = ["i.status='ACTIVE'", "i.stock_quantity>0", "i.work_id!=%s"]
+            params = [work_id]
+            if author and cat_id:
+                conds.append("(i.authors LIKE %s OR i.category_id=%s)")
+                params.extend([f"%{author}%", cat_id])
+            elif author:
+                conds.append("i.authors LIKE %s")
+                params.append(f"%{author}%")
+            elif cat_id:
+                conds.append("i.category_id=%s")
+                params.append(cat_id)
+
+            cur.execute(f"""
+                SELECT i.work_id, i.title, i.authors, i.cover_url, i.selling_price, i.promotional_price, i.stock_quantity, i.sold_count
+                FROM external_book_inventory i
+                WHERE {' AND '.join(conds)}
+                ORDER BY i.sold_count DESC, i.is_featured DESC LIMIT 3
+            """, tuple(params))
+            fallback_rows = cur.fetchall()
+            if not fallback_rows:
+                cur.execute("""
+                    SELECT i.work_id, i.title, i.authors, i.cover_url, i.selling_price, i.promotional_price, i.stock_quantity, i.sold_count
+                    FROM external_book_inventory i
+                    WHERE i.status='ACTIVE' AND i.stock_quantity>0 AND i.work_id!=%s
+                    ORDER BY i.is_featured DESC, i.sold_count DESC LIMIT 3
+                """, (work_id,))
+                fallback_rows = cur.fetchall()
+
+            if fallback_rows:
+                partners = [{
+                    "work_id": r["work_id"],
+                    "workId": r["work_id"],
+                    "title": r["title"],
+                    "authors": r["authors"],
+                    "cover_url": r["cover_url"],
+                    "selling_price": json_value(r["selling_price"]),
+                    "promotional_price": json_value(r["promotional_price"]),
+                    "stock_quantity": r["stock_quantity"]
+                } for r in fallback_rows]
+                return jsonify(success=True, data={
+                    "is_custom": False,
+                    "combo_title": "Thường được mua cùng nhau",
+                    "discount_percent": 10,
+                    "partner": partners[0],
+                    "partners": partners
+                })
+
+            return jsonify(success=True, data=None)
+    finally:
+        con.close()
+
+
+
+@app.get("/api/recommendations")
+def recommendations():
+    """Personalized recommendations based on user's favorite/order history or trending books."""
+    limit = min(max(int(request.args.get("limit", 6)), 1), 16)
+    user_id = session.get("user_id")
+    con = db()
+    try:
+        with con.cursor() as cur:
+            fav_authors = []
+            fav_work_ids = []
+            if user_id:
+                cur.execute("SELECT work_id, authors FROM external_book_items WHERE user_id=%s AND kind='FAVORITE'", (user_id,))
+                fav_rows = cur.fetchall()
+                fav_work_ids = [r["work_id"] for r in fav_rows]
+                for r in fav_rows:
+                    if r.get("authors"):
+                        fav_authors.extend([a.strip() for a in r["authors"].split(",") if a.strip()])
+
+            rows = []
+            if fav_authors and fav_work_ids:
+                placeholders = ",".join(["%s"] * len(fav_work_ids))
+                like_clauses = " OR ".join(["i.authors LIKE %s"] * min(len(fav_authors), 4))
+                params = [f"%{a}%" for a in fav_authors[:4]] + fav_work_ids + [limit]
+                query = f"""SELECT i.work_id,i.title,i.authors,i.cover_url,i.selling_price,i.promotional_price,i.stock_quantity,i.sold_count,
+                    ac.code AS coupon_code,ac.discount_type AS coupon_discount_type,ac.discount_value AS coupon_discount_value
+                    FROM external_book_inventory i LEFT JOIN (
+                        SELECT cp.work_id,c.code,c.discount_type,c.discount_value,ROW_NUMBER() OVER (PARTITION BY cp.work_id ORDER BY c.discount_value DESC,c.id DESC) priority
+                        FROM external_coupon_products cp JOIN coupons c ON c.id=cp.coupon_id
+                        WHERE c.status='ACTIVE' AND c.starts_at<=NOW() AND c.ends_at>=NOW() AND (c.usage_limit IS NULL OR c.used_count<c.usage_limit)
+                    ) ac ON ac.work_id=i.work_id AND ac.priority=1
+                    WHERE i.status='ACTIVE' AND i.stock_quantity>0 AND ({like_clauses}) AND i.work_id NOT IN ({placeholders})
+                    ORDER BY i.sold_count DESC LIMIT %s"""
+                cur.execute(query, params)
+                rows = cur.fetchall()
+
+            if len(rows) < limit:
+                exclude_ids = list(set(fav_work_ids + [r["work_id"] for r in rows]))
+                ex_clause = f"AND i.work_id NOT IN ({','.join(['%s']*len(exclude_ids))})" if exclude_ids else ""
+                fill_limit = limit - len(rows)
+                params = exclude_ids + [fill_limit] if exclude_ids else [fill_limit]
+                cur.execute(f"""SELECT i.work_id,i.title,i.authors,i.cover_url,i.selling_price,i.promotional_price,i.stock_quantity,i.sold_count,
+                    ac.code AS coupon_code,ac.discount_type AS coupon_discount_type,ac.discount_value AS coupon_discount_value
+                    FROM external_book_inventory i LEFT JOIN (
+                        SELECT cp.work_id,c.code,c.discount_type,c.discount_value,ROW_NUMBER() OVER (PARTITION BY cp.work_id ORDER BY c.discount_value DESC,c.id DESC) priority
+                        FROM external_coupon_products cp JOIN coupons c ON c.id=cp.coupon_id
+                        WHERE c.status='ACTIVE' AND c.starts_at<=NOW() AND c.ends_at>=NOW() AND (c.usage_limit IS NULL OR c.used_count<c.usage_limit)
+                    ) ac ON ac.work_id=i.work_id AND ac.priority=1
+                    WHERE i.status='ACTIVE' AND i.stock_quantity>0 {ex_clause}
+                    ORDER BY i.is_featured DESC, i.sold_count DESC, i.updated_at DESC LIMIT %s""", params)
+                rows.extend(cur.fetchall())
+
+            data = [{key: json_value(val) for key, val in r.items()} for r in rows]
+            return jsonify(success=True, data=data)
+    finally:
+        con.close()
+
+@app.get("/api/books/<work_id>/recommendations")
+def book_similar_recommendations(work_id):
+    """Books similar to current work (same author, category or top curated)."""
+    limit = min(max(int(request.args.get("limit", 6)), 1), 12)
+    con = db()
+    try:
+        with con.cursor() as cur:
+            cur.execute("SELECT authors, category_id FROM external_book_inventory WHERE work_id=%s", (work_id,))
+            target = cur.fetchone()
+            author = (target.get("authors") or "").split(",")[0].strip() if target else ""
+            cat_id = target.get("category_id") if target else None
+
+            conds = ["i.status='ACTIVE'", "i.stock_quantity>0", "i.work_id!=%s"]
+            params = [work_id]
+            if author and cat_id:
+                conds.append("(i.authors LIKE %s OR i.category_id=%s)")
+                params.extend([f"%{author}%", cat_id])
+            elif author:
+                conds.append("i.authors LIKE %s")
+                params.append(f"%{author}%")
+            elif cat_id:
+                conds.append("i.category_id=%s")
+                params.append(cat_id)
+
+            params.append(limit)
+            cur.execute(f"""SELECT i.work_id,i.title,i.authors,i.cover_url,i.selling_price,i.promotional_price,i.stock_quantity,i.sold_count,
+                ac.code AS coupon_code,ac.discount_type AS coupon_discount_type,ac.discount_value AS coupon_discount_value
+                FROM external_book_inventory i LEFT JOIN (
+                    SELECT cp.work_id,c.code,c.discount_type,c.discount_value,ROW_NUMBER() OVER (PARTITION BY cp.work_id ORDER BY c.discount_value DESC,c.id DESC) priority
+                    FROM external_coupon_products cp JOIN coupons c ON c.id=cp.coupon_id
+                    WHERE c.status='ACTIVE' AND c.starts_at<=NOW() AND c.ends_at>=NOW() AND (c.usage_limit IS NULL OR c.used_count<c.usage_limit)
+                ) ac ON ac.work_id=i.work_id AND ac.priority=1
+                WHERE {' AND '.join(conds)}
+                ORDER BY i.sold_count DESC, i.is_featured DESC LIMIT %s""", params)
+            rows = cur.fetchall()
+
+            if len(rows) < limit:
+                exclude = [work_id] + [r["work_id"] for r in rows]
+                fill_params = exclude + [limit - len(rows)]
+                cur.execute(f"""SELECT i.work_id,i.title,i.authors,i.cover_url,i.selling_price,i.promotional_price,i.stock_quantity,i.sold_count,
+                    ac.code AS coupon_code,ac.discount_type AS coupon_discount_type,ac.discount_value AS coupon_discount_value
+                    FROM external_book_inventory i LEFT JOIN (
+                        SELECT cp.work_id,c.code,c.discount_type,c.discount_value,ROW_NUMBER() OVER (PARTITION BY cp.work_id ORDER BY c.discount_value DESC,c.id DESC) priority
+                        FROM external_coupon_products cp JOIN coupons c ON c.id=cp.coupon_id
+                        WHERE c.status='ACTIVE' AND c.starts_at<=NOW() AND c.ends_at>=NOW() AND (c.usage_limit IS NULL OR c.used_count<c.usage_limit)
+                    ) ac ON ac.work_id=i.work_id AND ac.priority=1
+                    WHERE i.status='ACTIVE' AND i.stock_quantity>0 AND i.work_id NOT IN ({','.join(['%s']*len(exclude))})
+                    ORDER BY i.is_featured DESC, i.sold_count DESC LIMIT %s""", fill_params)
+                rows.extend(cur.fetchall())
+
+            data = [{key: json_value(val) for key, val in r.items()} for r in rows]
+            return jsonify(success=True, data=data)
+    finally:
+        con.close()
+
+SAMPLE_PREVIEWS = {
+    "DEMO016": {
+        "title": "1984",
+        "author": "George Orwell",
+        "pages": [
+            {
+                "chapter": "Lời giới thiệu",
+                "content": "“1984” là kiệt tác văn học kinh điển của George Orwell, khắc họa một xã hội bị giám sát toàn diện dưới quyền lực của 'Anh Cả' (Big Brother). Cuốn sách là khúc tráng ca bất hủ về khát vọng tự do, tình yêu và phẩm giá con người trước sự bóp nghẹt của quyền lực chuyên chế."
+            },
+            {
+                "chapter": "Mục lục tác phẩm",
+                "content": "• Phần I: Winston Smith và cuốn nhật ký bị cấm\n• Phần II: Tình yêu bí mật với Julia và hy vọng lật đổ\n• Phần III: Căn phòng 101 và ranh giới sinh tử\n• Phụ lục: Các nguyên lý nền tảng của Tân ngữ (Newspeak)"
+            },
+            {
+                "chapter": "Chương 1: Đồng hồ điểm mười ba giờ",
+                "content": "Đó là một ngày tháng Tư lạnh buốt và quang đãng, các đồng hồ đang điểm mười ba giờ. Winston Smith nép cằm vào ngực để tránh gió rét, luồn nhanh qua cánh cửa kính của Tòa nhà Chiến Thắng.\n\nHành lang sực mùi bắp cải luộc và thảm cũ rách. Ở một đầu hành lang có dán một tấm áp phích khổ lớn in gương mặt người đàn ông khoảng bốn mươi lăm tuổi với bộ ria mép đen dày. Winston bước lên cầu thang. Chẳng ích gì khi đợi thang máy, ngay cả vào những ngày tốt nhất nó cũng hiếm khi hoạt động..."
+            },
+            {
+                "chapter": "Chương 1: Màn hình giám sát",
+                "content": "Bên trong căn hộ, một giọng nói êm ái đang đọc danh sách các số liệu sản xuất gang thép từ màn hình vô tuyến gắn chặt vào tường. Thiết bị này không bao giờ có thể tắt hẳn. Ở mỗi tầng, ánh mắt người đàn ông trong áp phích luôn dõi theo bạn bất kể bạn di chuyển hướng nào. Bên dưới in hàng chữ đậm: 'ANH CẢ ĐANG DÕI THEO BẠN'."
+            }
+        ]
+    },
+    "DEMO011": {
+        "title": "Sapiens: Lược sử loài người",
+        "author": "Yuval Noah Harari",
+        "pages": [
+            {
+                "chapter": "Lời mở đầu",
+                "content": "Một trăm ngàn năm trước, Trái đất có ít nhất 6 loài người cùng sinh sống. Nhưng ngày nay chỉ còn lại một loài duy nhất: Homo sapiens. Điều gì đã đưa một giống loài động vật linh trưởng yếu ớt trở thành kẻ làm chủ tuyệt đối của hành tinh?"
+            },
+            {
+                "chapter": "Mục lục chọn lọc",
+                "content": "• Phần I: Cách mạng Nhận thức — Sức mạnh của trí tưởng tượng\n• Phần II: Cách mạng Nông nghiệp — Chiếc bẫy lớn nhất lịch sử\n• Phần III: Sự Hợp nhất của Loài người — Tiền tệ, Đế chế và Tôn giáo\n• Phần IV: Cách mạng Khoa học — Chinh phục tương lai"
+            },
+            {
+                "chapter": "Chương 1: Một sinh vật không có gì nổi bật",
+                "content": "Cách đây hai triệu năm rưỡi, tổ tiên loài người đã đi lang thang khắp Đông Phi. Họ làm tình, chơi đùa, kết bạn và tranh giành ngôi thứ xã hội — nhưng tinh tinh, linh cẩu và voi cũng làm y như vậy. Không ai có thể ngờ rằng con cháu của họ một ngày nào đó sẽ chế tạo ra máy tính, bay lên Mặt trăng và giải mã bộ gen sự sống..."
+            }
+        ]
+    },
+    "DEMO001": {
+        "title": "Nhà giả kim",
+        "author": "Paulo Coelho",
+        "pages": [
+            {
+                "chapter": "Lời tựa",
+                "content": "Được dịch ra hơn 80 ngôn ngữ và bán hàng chục triệu bản trên toàn cầu, 'Nhà giả kim' là áng văn kỳ diệu về hành trình lắng nghe tiếng gọi trái tim và theo đuổi Vận mệnh đời mình."
+            },
+            {
+                "chapter": "Chương 1: Chàng chăn cừu Santiago",
+                "content": "Santiago cùng đàn cừu đến một nhà thờ cổ bỏ hoang khi hoàng hôn buông xuống. Mái nhà thờ đã sập từ lâu, một cây tiêu huyền khổng lồ mọc sừng sững nơi từng là gian thánh thất. Cậu quyết định ngủ lại đây đêm nay. Đàn cừu biết cậu, chúng nghe theo tiếng gậy của cậu và luôn tin tưởng tuyệt đối vào người dẫn đường."
+            },
+            {
+                "chapter": "Trích đoạn: Sức mạnh của ước mơ",
+                "content": "“Khi bạn khao khát một điều gì đó, cả vũ trụ sẽ hợp lực lại để giúp bạn đạt được điều đó.” Đó là bài học đầu tiên mà Santiago học được trước khi bắt đầu cuộc hành trình vượt sa mạc Sahara hướng về những Kim tự tháp Ai Cập huyền bí."
+            }
+        ]
+    }
+}
+
+@app.get("/api/books/<work_id>/sample")
+def book_sample_preview(work_id):
+    """Sample reading excerpt preview for books."""
+    if work_id in SAMPLE_PREVIEWS:
+        return jsonify(success=True, data=SAMPLE_PREVIEWS[work_id])
+
+    con = db()
+    try:
+        with con.cursor() as cur:
+            cur.execute("SELECT title, authors, description, publisher_name, publication_year, page_count FROM external_book_inventory WHERE work_id=%s", (work_id,))
+            book = cur.fetchone()
+            if not book:
+                return jsonify(success=False, message="Không tìm thấy tác phẩm"), 404
+
+            title = book.get("title") or "Tác phẩm chọn lọc"
+            author = book.get("authors") or "Trạm Sách"
+            desc = book.get("description") or "Một tác phẩm ý nghĩa và sâu sắc được tuyển chọn kỹ lưỡng dành cho bạn đọc."
+            pub = book.get("publisher_name") or "Nhà xuất bản Văn Học"
+            year = book.get("publication_year") or 2024
+            pages_total = book.get("page_count") or 320
+
+            preview = {
+                "title": title,
+                "author": author,
+                "publisher": pub,
+                "year": year,
+                "pages": [
+                    {
+                        "chapter": "Trang thông tin tác phẩm",
+                        "content": f"Tác phẩm: {title}\nTác giả: {author}\nXuất bản: {pub} ({year})\nTổng số trang: {pages_total} trang\n\n“Mỗi cuốn sách là một người bạn đường trung thành trên hành trình mở rộng tri thức và làm phong phú tâm hồn.”"
+                    },
+                    {
+                        "chapter": "Lời giới thiệu tác phẩm",
+                        "content": desc[:600] + ("..." if len(desc) > 600 else "")
+                    },
+                    {
+                        "chapter": "Mục lục chọn lọc",
+                        "content": f"• Lời nói đầu từ dịch giả & ban biên tập\n• Phần I: Khởi nguyên và bối cảnh tác phẩm\n• Phần II: Những giá trị cốt lõi và tư tưởng dẫn lối\n• Phần III: Suy ngẫm và ứng dụng thực tiễn\n• Lời kết: Đọc để nhìn cuộc đời theo cách khác"
+                    },
+                    {
+                        "chapter": "Trích đoạn tiêu biểu",
+                        "content": f"“Tri thức chỉ thực sự có ý nghĩa khi nó được thấu hiểu bằng sự chiêm nghiệm sâu sắc. Trong tác phẩm '{title}', tác giả {author} không chỉ kể một câu chuyện hay truyền đạt kiến thức đơn thuần, mà còn mở ra một cánh cửa giúp người đọc tự vấn và khám phá bản thân qua từng trang sách.”"
+                    }
+                ]
+            }
+            return jsonify(success=True, data=preview)
+    finally:
+        con.close()
+
+@app.get("/api/admin/reports/wishlist")
+@api_user("ADMIN")
+def admin_wishlist_reports():
+    con = db()
+    try:
+        with con.cursor() as cur:
+            cur.execute("""SELECT i.work_id, COALESCE(inv.title, i.title) title, COALESCE(inv.authors, i.authors) authors,
+                COALESCE(inv.cover_url, i.cover_url) cover_url, COALESCE(inv.stock_quantity, 0) stock_quantity,
+                COALESCE(inv.selling_price, i.unit_price) selling_price,
+                COUNT(i.id) favorite_count
+                FROM external_book_items i
+                LEFT JOIN external_book_inventory inv ON inv.work_id=i.work_id
+                WHERE i.kind='FAVORITE'
+                GROUP BY i.work_id, title, authors, cover_url, stock_quantity, selling_price
+                ORDER BY favorite_count DESC, stock_quantity ASC LIMIT 20""")
+            rows = cur.fetchall()
+            return jsonify(success=True, data=[{k: json_value(v) for k, v in r.items()} for r in rows])
+    finally:
+        con.close()
+
+@app.get("/api/admin/reports/analytics")
+@api_user("ADMIN")
+def admin_analytics_reports():
+    time_range = (request.args.get("range") or "all").lower()
+    where_clause = ""
+    if time_range == "today":
+        where_clause = "WHERE created_at >= CURDATE()"
+    elif time_range == "week":
+        where_clause = "WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"
+    elif time_range == "month":
+        where_clause = "WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)"
+
+    con = db()
+    try:
+        with con.cursor() as cur:
+            cur.execute(f"""
+                SELECT status, COUNT(*) order_count, COALESCE(SUM(total_amount), 0) revenue
+                FROM external_orders
+                {where_clause}
+                GROUP BY status
+            """)
+            status_rows = cur.fetchall()
+
+            cur.execute("""
+                SELECT DATE_FORMAT(created_at, '%d/%m') day_label,
+                       DATE(created_at) order_date,
+                       COUNT(*) order_count,
+                       COALESCE(SUM(total_amount), 0) revenue
+                FROM external_orders
+                GROUP BY DATE(created_at), DATE_FORMAT(created_at, '%d/%m')
+                ORDER BY order_date DESC
+                LIMIT 10
+            """)
+            trend_rows = cur.fetchall()
+            trend_rows.reverse()
+
+            cur.execute("""
+                SELECT oi.work_id, oi.title, oi.authors, oi.cover_url,
+                       SUM(oi.quantity) total_sold,
+                       COALESCE(SUM(oi.unit_price * oi.quantity), 0) total_revenue
+                FROM external_order_items oi
+                JOIN external_orders o ON o.id = oi.order_id
+                WHERE o.status != 'CANCELLED'
+                GROUP BY oi.work_id, oi.title, oi.authors, oi.cover_url
+                ORDER BY total_sold DESC, total_revenue DESC
+                LIMIT 5
+            """)
+            top_selling = cur.fetchall()
+
+            return jsonify(success=True, data={
+                "range": time_range,
+                "status_summary": [{k: json_value(v) for k, v in r.items()} for r in status_rows],
+                "trend": [{k: json_value(v) for k, v in r.items()} for r in trend_rows],
+                "top_selling": [{k: json_value(v) for k, v in r.items()} for r in top_selling]
+            })
+    finally:
+        con.close()
+
+@app.get("/api/admin/dashboard-stats")
+@api_user("ADMIN")
+def admin_dashboard_stats():
+    con = db()
+    try:
+        with con.cursor() as cur:
+            cur.execute("""
+                SELECT 
+                    COALESCE(SUM(CASE WHEN status != 'CANCELLED' THEN total_amount ELSE 0 END), 0) AS total_revenue,
+                    COALESCE(SUM(CASE WHEN status != 'CANCELLED' AND created_at >= CURDATE() THEN total_amount ELSE 0 END), 0) AS today_revenue,
+                    COALESCE(SUM(CASE WHEN status != 'CANCELLED' AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN total_amount ELSE 0 END), 0) AS week_revenue,
+                    COUNT(*) AS total_orders,
+                    COALESCE(SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END), 0) AS pending_orders,
+                    COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END), 0) AS completed_orders,
+                    COALESCE(SUM(CASE WHEN status = 'SHIPPING' THEN 1 ELSE 0 END), 0) AS shipping_orders,
+                    COALESCE(SUM(CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END), 0) AS cancelled_orders
+                FROM external_orders
+            """)
+            order_stats = cur.fetchone()
+
+            cur.execute("""
+                SELECT 
+                    COUNT(*) AS total_titles,
+                    COALESCE(SUM(stock_quantity), 0) AS total_stock,
+                    COALESCE(SUM(sold_count), 0) AS total_sold,
+                    COALESCE(SUM(CASE WHEN stock_quantity <= minimum_stock THEN 1 ELSE 0 END), 0) AS low_stock_count
+                FROM external_book_inventory
+                WHERE status = 'ACTIVE'
+            """)
+            book_stats = cur.fetchone()
+
+            cur.execute("SELECT COUNT(*) AS total_customers FROM users WHERE role_id = 2")
+            customer_stats = cur.fetchone()
+
+            cur.execute("""
+                SELECT id, order_code, recipient_name, total_amount, status, payment_method, created_at
+                FROM external_orders
+                ORDER BY id DESC
+                LIMIT 6
+            """)
+            recent_orders = cur.fetchall()
+
+            cur.execute("""
+                SELECT work_id, title, authors, cover_url, selling_price, promotional_price, sold_count, stock_quantity
+                FROM external_book_inventory
+                WHERE status = 'ACTIVE'
+                ORDER BY sold_count DESC
+                LIMIT 5
+            """)
+            top_selling = cur.fetchall()
+
+            cur.execute("""
+                SELECT work_id, title, authors, cover_url, selling_price, stock_quantity, minimum_stock
+                FROM external_book_inventory
+                WHERE status = 'ACTIVE' AND stock_quantity <= GREATEST(minimum_stock, 10)
+                ORDER BY stock_quantity ASC
+                LIMIT 5
+            """)
+            low_stock = cur.fetchall()
+            if not low_stock:
+                cur.execute("""
+                    SELECT work_id, title, authors, cover_url, selling_price, stock_quantity, minimum_stock
+                    FROM external_book_inventory
+                    WHERE status = 'ACTIVE'
+                    ORDER BY stock_quantity ASC
+                    LIMIT 5
+                """)
+                low_stock = cur.fetchall()
+
+            cur.execute("""
+                SELECT 
+                    DATE(created_at) AS order_date,
+                    COUNT(*) AS order_count,
+                    COALESCE(SUM(CASE WHEN status != 'CANCELLED' THEN total_amount ELSE 0 END), 0) AS daily_revenue
+                FROM external_orders
+                WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+                GROUP BY DATE(created_at)
+                ORDER BY order_date ASC
+            """)
+            revenue_by_date = cur.fetchall()
+
+            return jsonify(success=True, data={
+                "kpi": {
+                    "total_revenue": float(order_stats["total_revenue"]),
+                    "today_revenue": float(order_stats["today_revenue"]),
+                    "week_revenue": float(order_stats["week_revenue"]),
+                    "total_orders": int(order_stats["total_orders"]),
+                    "pending_orders": int(order_stats["pending_orders"]),
+                    "shipping_orders": int(order_stats["shipping_orders"]),
+                    "completed_orders": int(order_stats["completed_orders"]),
+                    "cancelled_orders": int(order_stats["cancelled_orders"]),
+                    "total_titles": int(book_stats["total_titles"]),
+                    "total_stock": int(book_stats["total_stock"]),
+                    "total_sold": int(book_stats["total_sold"]),
+                    "low_stock_count": int(book_stats["low_stock_count"]),
+                    "total_customers": int(customer_stats["total_customers"])
+                },
+                "recent_orders": [{k: json_value(v) for k, v in r.items()} for r in recent_orders],
+                "top_selling": [{k: json_value(v) for k, v in r.items()} for r in top_selling],
+                "low_stock": [{k: json_value(v) for k, v in r.items()} for r in low_stock],
+                "revenue_chart": [{k: json_value(v) for k, v in r.items()} for r in revenue_by_date]
+            })
+    finally:
+        con.close()
+
 @app.post("/api/auth/login")
 def login():
     data=request.get_json() or {}; email=str(data.get("email") or "").strip().lower(); con=db()
     try:
         with con.cursor() as cur:
             cur.execute("SELECT u.id,u.full_name,u.email,u.password_hash,u.status,r.code role FROM users u JOIN roles r ON r.id=u.role_id WHERE LOWER(u.email)=%s",(email,)); user=cur.fetchone()
-            if not user or user["status"]!="ACTIVE": return jsonify(success=False,message="Email hoặc mật khẩu không đúng"),401
+            if not user: return jsonify(success=False,message="Email hoặc mật khẩu không đúng"),401
+            if user["status"] == "LOCKED": return jsonify(success=False,message="Tài khoản này đã bị khóa bởi Quản trị viên. Vui lòng liên hệ hỗ trợ."),403
+            if user["status"] != "ACTIVE": return jsonify(success=False,message="Tài khoản chưa được kích hoạt."),401
             try: ph.verify(user["password_hash"],data.get("password",""))
             except (VerifyMismatchError, Exception): return jsonify(success=False,message="Email hoặc mật khẩu không đúng"),401
             session.update(user_id=user["id"],name=user["full_name"],role=user["role"]);cur.execute("UPDATE users SET last_login_at=NOW() WHERE id=%s",(user["id"],));con.commit()
@@ -569,7 +1157,8 @@ def request_email_verification():
         verification_url=url_for("verify_email",token=token,_external=True);host=os.getenv("SMTP_HOST");sender=os.getenv("SMTP_FROM") or os.getenv("SMTP_USER")
         if host:
             if not sender:return jsonify(success=False,message="Cấu hình SMTP còn thiếu địa chỉ người gửi"),503
-            message=EmailMessage();message["Subject"]="Xác thực email Trạm Sách";message["From"]=os.getenv("SMTP_FROM") or os.getenv("SMTP_USER");message["To"]=user["email"]
+            sender_name=os.getenv("SMTP_FROM_NAME") or "Trạm Sách"
+            message=EmailMessage();message["Subject"]="Xác thực email Trạm Sách";message["From"]=formataddr((sender_name,sender));message["To"]=user["email"]
             message.set_content(f"Xin chào,\n\nMở liên kết sau để xác thực email (hết hạn sau 30 phút):\n{verification_url}\n")
             try:
                 with smtplib.SMTP(host,int(os.getenv("SMTP_PORT","587")),timeout=20) as smtp:
@@ -610,7 +1199,8 @@ def request_password_reset():
     if not user:return jsonify(success=True,data=generic)
     host=os.getenv("SMTP_HOST");sender=os.getenv("SMTP_FROM") or os.getenv("SMTP_USER")
     if host and sender:
-        message=EmailMessage();message["Subject"]="Đặt lại mật khẩu Trạm Sách";message["From"]=sender;message["To"]=user["email"]
+        sender_name=os.getenv("SMTP_FROM_NAME") or "Trạm Sách"
+        message=EmailMessage();message["Subject"]="Đặt lại mật khẩu Trạm Sách";message["From"]=formataddr((sender_name,sender));message["To"]=user["email"]
         message.set_content(f"Xin chào,\n\nMở liên kết sau để tạo mật khẩu mới. Liên kết hết hạn sau 30 phút:\n{reset_url}\n\nNếu bạn không yêu cầu, hãy bỏ qua email này.")
         try:
             with smtplib.SMTP(host,int(os.getenv("SMTP_PORT","587")),timeout=20) as smtp:
@@ -636,28 +1226,159 @@ def reset_password():
         session.clear();return jsonify(success=True,data={"message":"Đã đặt lại mật khẩu thành công"})
     finally:con.close()
 
+@app.get("/api/books/suggest")
+def suggest_books():
+    q = (request.args.get("q") or "").strip()
+    if not q:
+        return jsonify(success=True, data=[], categories=[])
+    limit = min(10, max(1, int(request.args.get("limit", 6))))
+    tokens = [t.strip() for t in q.split() if t.strip()]
+    if not tokens:
+        return jsonify(success=True, data=[], categories=[])
+
+    con = db()
+    try:
+        suggested_categories = []
+        with con.cursor() as cur:
+            cat_query = f"%{q}%"
+            cur.execute("""
+                SELECT id, name, slug
+                FROM categories
+                WHERE status='ACTIVE' AND (name LIKE %s OR slug LIKE %s)
+                ORDER BY name ASC
+                LIMIT 3
+            """, (cat_query, cat_query))
+            suggested_categories = cur.fetchall()
+
+            token_conditions = []
+            token_params = []
+            for token in tokens:
+                t_wild = f"%{token}%"
+                token_conditions.append("(i.title LIKE %s OR i.authors LIKE %s OR c.name LIKE %s)")
+                token_params.extend([t_wild, t_wild, t_wild])
+
+            where_sql = " AND ".join(token_conditions)
+            exact_query = f"%{q}%"
+            prefix_query = f"{q}%"
+
+            sql = f"""
+                SELECT i.work_id, i.title, i.authors, i.cover_url, i.selling_price, i.promotional_price, i.stock_quantity, c.name AS category_name
+                FROM external_book_inventory i
+                LEFT JOIN categories c ON c.id = i.category_id
+                WHERE i.status='ACTIVE' AND {where_sql}
+                ORDER BY (i.title LIKE %s) DESC, (i.title LIKE %s) DESC, i.sold_count DESC, i.updated_at DESC
+                LIMIT %s
+            """
+            cur.execute(sql, (*token_params, prefix_query, exact_query, limit))
+            rows = cur.fetchall()
+        items = []
+        for r in rows:
+            items.append({
+                "work_id": r["work_id"],
+                "title": r["title"],
+                "authors": r["authors"],
+                "cover_url": r["cover_url"],
+                "category_name": r.get("category_name"),
+                "selling_price": float(r["selling_price"]) if r["selling_price"] is not None else 99000,
+                "promotional_price": float(r["promotional_price"]) if r["promotional_price"] is not None else None,
+                "stock_quantity": r["stock_quantity"]
+            })
+        return jsonify(success=True, data=items, categories=suggested_categories)
+    except Exception as exc:
+        return jsonify(success=False, message=str(exc)), 500
+    finally:
+        con.close()
+
 @app.get("/api/books")
 def search_books():
-    query=request.args.get("q") or "language:vie"; page=max(1,int(request.args.get("page",1))); limit=min(50,max(1,int(request.args.get("limit",36)))); source_limit=min(100,max(60,limit))
+    raw_query = request.args.get("q") or ""
+    query = raw_query.strip()
+    page = max(1, int(request.args.get("page", 1)))
+    limit = min(50, max(1, int(request.args.get("limit", 36))))
+    offset = (page - 1) * limit
+    category_slug = request.args.get("category")
+
+    con = db()
     try:
-        response=openlibrary_get("https://openlibrary.org/search.json",params={"q":query,"page":page,"limit":source_limit,"fields":"key,title,author_name,first_publish_year,cover_i,isbn,edition_count"}); response.raise_for_status(); raw=response.json()
-        raw["docs"] = sorted(raw.get("docs", []), key=lambda book: (not bool(book.get("cover_i")), -int(book.get("edition_count") or 0), unicodedata.normalize("NFC", str(book.get("title") or "")).casefold()))
-        for book in raw["docs"]:
-            book["title"] = unicodedata.normalize("NFC", str(book.get("title") or ""))
-            book["author_name"] = [unicodedata.normalize("NFC", str(author)) for author in book.get("author_name", [])]
+        with con.cursor() as cur:
+            cat_id = None
+            if category_slug:
+                cur.execute("SELECT id FROM categories WHERE slug=%s", (category_slug,))
+                cat_row = cur.fetchone()
+                if cat_row:
+                    cat_id = cat_row["id"]
+
+            where_clauses = ["i.status='ACTIVE'"]
+            params = []
+
+            if cat_id:
+                where_clauses.append("i.category_id = %s")
+                params.append(cat_id)
+
+            order_params = []
+            if query and query != "language:vie":
+                tokens = [t.strip() for t in query.split() if t.strip()]
+                for token in tokens:
+                    t_wild = f"%{token}%"
+                    where_clauses.append("(i.title LIKE %s OR i.authors LIKE %s OR c.name LIKE %s)")
+                    params.extend([t_wild, t_wild, t_wild])
+                order_clause = "(i.title LIKE %s) DESC, i.sold_count DESC, i.updated_at DESC"
+                order_params.append(f"%{query}%")
+            else:
+                order_clause = "i.is_featured DESC, i.sold_count DESC, i.updated_at DESC"
+
+            where_str = " AND ".join(where_clauses)
+
+            cur.execute(f"""
+                SELECT i.work_id, i.title, i.authors, i.cover_url, i.stock_quantity, i.sold_count,
+                       i.selling_price, i.promotional_price, i.publication_year,
+                       ac.code AS coupon_code, ac.discount_type AS coupon_discount_type, ac.discount_value AS coupon_discount_value
+                FROM external_book_inventory i
+                LEFT JOIN categories c ON c.id = i.category_id
+                LEFT JOIN (
+                    SELECT cp.work_id, c.code, c.discount_type, c.discount_value,
+                           ROW_NUMBER() OVER (PARTITION BY cp.work_id ORDER BY c.discount_value DESC, c.id DESC) priority
+                    FROM external_coupon_products cp
+                    JOIN coupons c ON c.id=cp.coupon_id
+                    WHERE c.status='ACTIVE' AND c.starts_at<=NOW() AND c.ends_at>=NOW() AND (c.usage_limit IS NULL OR c.used_count<c.usage_limit)
+                ) ac ON ac.work_id=i.work_id AND ac.priority=1
+                WHERE {where_str}
+                ORDER BY {order_clause}
+                LIMIT %s OFFSET %s
+            """, (*params, *order_params, limit, offset))
+            local_rows = cur.fetchall()
+
+            cur.execute(f"SELECT COUNT(*) total FROM external_book_inventory i LEFT JOIN categories c ON c.id = i.category_id WHERE {where_str}", tuple(params))
+            total_count = cur.fetchone()["total"]
+
+        if local_rows or query:
+            items = [{
+                "workId": row["work_id"],
+                "work_id": row["work_id"],
+                "title": row["title"],
+                "authors": [a.strip() for a in row["authors"].split(",")] if isinstance(row["authors"], str) else (row["authors"] or []),
+                "year": row["publication_year"],
+                "cover": row["cover_url"],
+                "cover_url": row["cover_url"],
+                "stock_quantity": row["stock_quantity"],
+                "selling_price": float(row["selling_price"]) if row["selling_price"] is not None else 99000,
+                "promotional_price": float(row["promotional_price"]) if row["promotional_price"] is not None else None,
+                "sold_count": row["sold_count"],
+                "coupon_code": row.get("coupon_code"),
+                "coupon_discount_type": row.get("coupon_discount_type"),
+                "coupon_discount_value": float(row["coupon_discount_value"]) if row.get("coupon_discount_value") else None,
+                "source": "mysql-inventory"
+            } for row in local_rows]
+            return jsonify(success=True, data={"items": items, "total": total_count, "page": page, "source": "mysql-inventory"})
+    finally:
+        con.close()
+
+    try:
+        response=openlibrary_get("https://openlibrary.org/search.json",params={"q":query or "language:vie","page":page,"limit":limit,"fields":"key,title,author_name,first_publish_year,cover_i,isbn,edition_count"}); response.raise_for_status(); raw=response.json()
         items=[{"workId":x.get("key","").split("/")[-1],"title":x.get("title","Không rõ tên"),"authors":x.get("author_name",[]),"year":x.get("first_publish_year"),"cover":f"https://covers.openlibrary.org/b/id/{x['cover_i']}-M.jpg" if x.get("cover_i") else None} for x in raw.get("docs",[])]
         return jsonify(success=True,data={"items":items[:limit],"total":raw.get("numFound",0),"page":page,"source":"openlibrary"})
-    except (requests.RequestException, ValueError):
-        # The site remains usable when Open Library is blocked or temporarily unavailable.
-        con=db()
-        try:
-            term=f"%{query}%"
-            with con.cursor() as cur:
-                cur.execute("SELECT work_id,title,authors,cover_url FROM external_book_inventory WHERE title LIKE %s OR authors LIKE %s ORDER BY sold_count DESC,updated_at DESC LIMIT %s",(term,term,limit))
-                rows=cur.fetchall()
-            items=[{"workId":row["work_id"],"title":row["title"],"authors":row["authors"].split(","),"year":None,"cover":row["cover_url"]} for row in rows]
-            return jsonify(success=True,data={"items":items,"total":len(items),"page":1,"source":"mysql-fallback","warning":"openlibrary-unavailable"})
-        finally: con.close()
+    except Exception:
+        return jsonify(success=True,data={"items":[],"total":0,"page":page,"source":"fallback"})
 
 @app.get("/api/books/<work_id>")
 def get_book(work_id):
@@ -784,13 +1505,61 @@ def moderate_external_review(review_id):
 
 @app.get("/api/category-books/<slug>")
 def category_books(slug):
-    con=db()
+    con = db()
     try:
         with con.cursor() as cur:
-            cur.execute("SELECT name FROM categories WHERE slug=%s AND status='ACTIVE'",(slug,))
-            active_category=cur.fetchone()
-    finally: con.close()
-    if not active_category:return jsonify(success=False,message="Danh muc khong ton tai"),404
+            cur.execute("SELECT id, name FROM categories WHERE slug=%s AND status='ACTIVE'", (slug,))
+            active_category = cur.fetchone()
+            if not active_category:
+                return jsonify(success=False, message="Danh mục không tồn tại"), 404
+
+            page = max(1, int(request.args.get("page", 1)))
+            limit = min(50, max(1, int(request.args.get("limit", 36))))
+            offset = (page - 1) * limit
+
+            cur.execute("""
+                SELECT i.work_id, i.title, i.authors, i.cover_url, i.stock_quantity, i.sold_count,
+                       i.selling_price, i.promotional_price, i.publication_year,
+                       ac.code AS coupon_code, ac.discount_type AS coupon_discount_type, ac.discount_value AS coupon_discount_value
+                FROM external_book_inventory i
+                LEFT JOIN (
+                    SELECT cp.work_id, c.code, c.discount_type, c.discount_value,
+                           ROW_NUMBER() OVER (PARTITION BY cp.work_id ORDER BY c.discount_value DESC, c.id DESC) priority
+                    FROM external_coupon_products cp
+                    JOIN coupons c ON c.id=cp.coupon_id
+                    WHERE c.status='ACTIVE' AND c.starts_at<=NOW() AND c.ends_at>=NOW() AND (c.usage_limit IS NULL OR c.used_count<c.usage_limit)
+                ) ac ON ac.work_id=i.work_id AND ac.priority=1
+                WHERE i.category_id = %s AND i.status = 'ACTIVE'
+                ORDER BY i.sold_count DESC, i.updated_at DESC
+                LIMIT %s OFFSET %s
+            """, (active_category["id"], limit, offset))
+            local_rows = cur.fetchall()
+
+            cur.execute("SELECT COUNT(*) total FROM external_book_inventory WHERE category_id=%s AND status='ACTIVE'", (active_category["id"],))
+            total_count = cur.fetchone()["total"]
+
+        if local_rows:
+            items = [{
+                "workId": row["work_id"],
+                "work_id": row["work_id"],
+                "title": row["title"],
+                "authors": [a.strip() for a in row["authors"].split(",")] if isinstance(row["authors"], str) else (row["authors"] or []),
+                "cover": row["cover_url"],
+                "cover_url": row["cover_url"],
+                "stock_quantity": row["stock_quantity"],
+                "selling_price": float(row["selling_price"]) if row["selling_price"] is not None else 99000,
+                "promotional_price": float(row["promotional_price"]) if row["promotional_price"] is not None else None,
+                "sold_count": row["sold_count"],
+                "year": row["publication_year"],
+                "coupon_code": row.get("coupon_code"),
+                "coupon_discount_type": row.get("coupon_discount_type"),
+                "coupon_discount_value": float(row["coupon_discount_value"]) if row.get("coupon_discount_value") else None,
+                "source": "mysql-inventory"
+            } for row in local_rows]
+            return jsonify(success=True, data={"items": items, "total": total_count, "page": page, "source": "mysql-inventory", "subject": active_category["name"]})
+    finally:
+        con.close()
+
     subject=CATEGORY_OPEN_LIBRARY_SUBJECTS.get(slug,active_category["name"])
     query=CATEGORY_OPEN_LIBRARY_QUERIES.get(slug,active_category["name"])
     page = max(1, int(request.args.get("page", 1)))
@@ -810,14 +1579,7 @@ def category_books(slug):
         } for book in docs[:limit] if book.get("key")]
         return jsonify(success=True,data={"items":items,"total":raw.get("numFound",len(items)),"page":page,"source":"openlibrary-search","subject":subject})
     except (requests.RequestException, ValueError):
-        con=db()
-        try:
-            with con.cursor() as cur:
-                cur.execute("SELECT work_id,title,authors,cover_url FROM external_book_inventory ORDER BY (cover_url IS NULL),sold_count DESC,updated_at DESC LIMIT %s",(limit,))
-                rows=cur.fetchall()
-            items=[{"workId":row["work_id"],"title":row["title"],"authors":row["authors"].split(","),"year":None,"cover":row["cover_url"]} for row in rows]
-            return jsonify(success=True,data={"items":items,"total":len(items),"page":1,"source":"mysql-fallback","subject":subject,"warning":"openlibrary-unavailable"})
-        finally: con.close()
+        return jsonify(success=True,data={"items":[],"total":0,"page":1,"source":"empty","subject":subject})
 
 @app.route("/api/items/<kind>",methods=["GET","POST"])
 @api_user()
@@ -882,8 +1644,9 @@ def delete_item(kind,work_id):
                 payload=request.get_json() or {}
                 if "selected" in payload:
                     selected=1 if payload.get("selected") else 0
+                    cur.execute("SELECT id FROM external_book_items WHERE user_id=%s AND kind='CART' AND work_id=%s",(session["user_id"],work_id))
+                    if not cur.fetchone():return jsonify(success=False,message="Không tìm thấy sản phẩm trong giỏ hàng"),404
                     cur.execute("UPDATE external_book_items SET selected=%s WHERE user_id=%s AND kind='CART' AND work_id=%s",(selected,session["user_id"],work_id));con.commit()
-                    if not cur.rowcount:return jsonify(success=False,message="Không tìm thấy sản phẩm trong giỏ hàng"),404
                     return jsonify(success=True,data={"selected":bool(selected)})
                 try:quantity=int(payload.get("quantity"))
                 except (TypeError,ValueError):return jsonify(success=False,message="Số lượng không hợp lệ"),422
@@ -895,6 +1658,20 @@ def delete_item(kind,work_id):
                 return jsonify(success=True,data={"quantity":quantity,"stock":item["stock_quantity"],"lineTotal":float(item["unit_price"])*quantity})
             cur.execute("DELETE FROM external_book_items WHERE user_id=%s AND kind=%s AND work_id=%s",(session["user_id"],kind,work_id));con.commit();return jsonify(success=True)
     finally: con.close()
+
+@app.route("/api/items/cart/select-all", methods=["POST", "PATCH"])
+@api_user()
+def select_all_cart_items():
+    payload = request.get_json() or {}
+    selected = 1 if payload.get("selected", True) else 0
+    con = db()
+    try:
+        with con.cursor() as cur:
+            cur.execute("UPDATE external_book_items SET selected=%s WHERE user_id=%s AND kind='CART'", (selected, session["user_id"]))
+            con.commit()
+        return jsonify(success=True, data={"selected": bool(selected)})
+    finally:
+        con.close()
 
 @app.post("/api/cart/selection/reset")
 @api_user()
@@ -914,17 +1691,29 @@ def chat_normalize(value):
 
 @app.post("/api/chat")
 def storefront_chat():
-    data=request.get_json(silent=True) or {};message=str(data.get("message") or "").strip()
+    identity=f"{request.remote_addr or 'unknown'}:{session.get('user_id') or 'guest'}"
+    if chat_rate_limited(identity):
+        return jsonify(success=False,message="Bạn đang gửi câu hỏi quá nhanh. Vui lòng đợi một chút rồi thử lại."),429
+    data=request.get_json(silent=True) or {};message=str(data.get("message") or "").strip();raw_history=data.get("history") if isinstance(data.get("history"),list) else []
+    history=[]
+    for item in raw_history[-8:]:
+        if not isinstance(item,dict) or item.get("role") not in {"user","assistant"}:continue
+        content=str(item.get("content") or "").strip()[:500]
+        if content:history.append({"role":item["role"],"content":content})
     if not message:return jsonify(success=False,message="Bạn hãy nhập câu hỏi."),422
     if len(message)>500:return jsonify(success=False,message="Câu hỏi không được vượt quá 500 ký tự."),422
-    normalized=chat_normalize(message);actions=[];products=[]
+    normalized=chat_normalize(message);actions=[];products=[];policy_reply=None
+    policies={item["id"]:item["text"] for item in STORE_POLICIES}
 
     if any(key in normalized for key in ("doi tra","tra hang","hoan hang")):
-        return jsonify(success=True,data={"message":"Trạm Sách hỗ trợ đổi trả trong 7 ngày khi sách bị lỗi, hư hỏng hoặc giao sai sản phẩm. Bạn nên giữ hóa đơn và chụp ảnh tình trạng sách để được hỗ trợ nhanh.","products":[],"actions":[{"label":"Xem đơn hàng","url":"/orders"}]})
-    if any(key in normalized for key in ("giao hang","van chuyen","ship")):
-        return jsonify(success=True,data={"message":"Đơn từ 299.000đ được miễn phí vận chuyển. Thời gian giao dự kiến 2–5 ngày tùy khu vực và địa chỉ nhận hàng.","products":[],"actions":[{"label":"Xem giỏ hàng","url":"/cart"}]})
-    if any(key in normalized for key in ("thanh toan","cod","chuyen khoan")):
-        return jsonify(success=True,data={"message":"Bạn có thể thanh toán khi nhận hàng (COD). Phí vận chuyển và tổng tiền sẽ được hiển thị rõ tại bước thanh toán.","products":[],"actions":[{"label":"Đi đến thanh toán","url":"/checkout"}]})
+        policy_reply=policies["policy-returns"]
+        actions=[{"label":"Xem đơn hàng","url":"/orders"}]
+    elif any(key in normalized for key in ("giao hang","van chuyen","ship")):
+        policy_reply=policies["policy-shipping"]
+        actions=[{"label":"Xem giỏ hàng","url":"/cart"}]
+    elif any(key in normalized for key in ("thanh toan","cod","chuyen khoan")):
+        policy_reply=policies["policy-payment"]
+        actions=[{"label":"Đi đến thanh toán","url":"/checkout"}]
     if any(key in normalized for key in ("don hang","don cua toi","dang giao","ma don")):
         if not session.get("user_id"):
             return jsonify(success=True,data={"message":"Bạn cần đăng nhập để tôi tra cứu đơn hàng đúng theo tài khoản.","products":[],"actions":[{"label":"Đăng nhập","url":"/login?next=/orders"}]})
@@ -945,16 +1734,19 @@ def storefront_chat():
     terms=[term for term in re.findall(r"[a-z0-9]+",normalized) if len(term)>1 and term not in stop and not term[0].isdigit()]
     category_hints={"tre em":"thiếu nhi","thieu nhi":"thiếu nhi","kinh doanh":"kinh tế","tam ly":"tâm lý","ky nang":"kỹ năng","cong nghe":"công nghệ","van hoc":"văn học"}
     hinted=next((value for key,value in category_hints.items() if key in normalized),None)
+    child_query=any(key in normalized for key in ("tre em","thieu nhi","duoi 12","be ","cho be"))
+    child_titles=("de men phieu luu ky","hoang tu be","totto-chan","harry potter","cho toi xin mot ve di tuoi tho","khong gia dinh")
     con=db()
     try:
         with con.cursor() as cur:
-            cur.execute("SELECT i.work_id,i.title,i.authors,i.cover_url,i.stock_quantity,i.selling_price,i.promotional_price,c.name category FROM external_book_inventory i LEFT JOIN categories c ON c.id=i.category_id WHERE i.status='ACTIVE' AND i.stock_quantity>0 ORDER BY i.is_featured DESC,i.sold_count DESC,i.updated_at DESC LIMIT 150")
+            cur.execute("SELECT i.work_id,i.title,i.authors,i.description,i.cover_url,i.stock_quantity,i.selling_price,i.promotional_price,c.name category FROM external_book_inventory i LEFT JOIN categories c ON c.id=i.category_id WHERE i.status='ACTIVE' AND i.stock_quantity>0 ORDER BY i.is_featured DESC,i.sold_count DESC,i.updated_at DESC LIMIT 150")
             rows=cur.fetchall()
     finally:con.close()
     def score(row):
         haystack=chat_normalize(" ".join(str(row.get(key) or "") for key in ("title","authors","category")))
         points=sum(4 if term in chat_normalize(row["title"]) else 2 if term in chat_normalize(row["authors"]) else 1 for term in terms if term in haystack)
         if hinted and chat_normalize(hinted) in haystack:points+=5
+        if child_query and any(title in chat_normalize(row["title"]) for title in child_titles):points+=8
         return points
     filtered=[]
     for row in rows:
@@ -962,12 +1754,36 @@ def storefront_chat():
         if max_price and price>max_price:continue
         row["score"]=score(row);filtered.append(row)
     filtered.sort(key=lambda row:row["score"],reverse=True)
-    selected=[row for row in filtered if row["score"]>0][:4] if terms or hinted else filtered[:4]
+    selected=[row for row in filtered if row["score"]>0][:4] if (terms or hinted) else []
     products=[{"workId":row["work_id"],"title":row["title"],"authors":row["authors"],"cover":row["cover_url"],"stock":row["stock_quantity"],"price":float(row["promotional_price"] or row["selling_price"])} for row in selected]
     if products:reply="Tôi tìm được một số cuốn phù hợp trong kho. Bạn có thể mở chi tiết hoặc thêm trực tiếp vào giỏ hàng."
     elif terms:reply="Tôi chưa tìm thấy sách phù hợp đang còn hàng. Bạn thử rút gọn tên sách hoặc nhập tên tác giả nhé."
     else:reply="Tôi có thể tìm sách, gợi ý theo thể loại hoặc khoảng giá, kiểm tra đơn hàng và giải đáp chính sách giao hàng, thanh toán, đổi trả."
-    return jsonify(success=True,data={"message":reply,"products":products,"actions":[{"label":"Xem toàn bộ sách","url":"/books"}] if not products else []})
+    if policy_reply:reply=policy_reply
+    documents=retrieve(message,build_documents(rows))
+    if not products and not policy_reply:
+        row_by_id={str(row["work_id"]):row for row in rows}
+        semantic_rows=[row_by_id[doc["id"]] for doc in documents if doc["kind"]=="book" and doc["id"] in row_by_id][:4]
+        products=[{"workId":row["work_id"],"title":row["title"],"authors":row["authors"],"cover":row["cover_url"],"stock":row["stock_quantity"],"price":float(row["promotional_price"] or row["selling_price"])} for row in semantic_rows]
+        if products:reply="Tôi đã tìm được một số cuốn phù hợp với nhu cầu của bạn trong kho."
+    ai_generated=False;ai_fallback=False
+    store_fact_query=bool(policy_reply) or any(key in normalized for key in ("gia bao nhieu","gia sach","con hang","ton kho","ma giam","coupon","voucher"))
+    if not store_fact_query:
+        try:
+            ai_reply=generate_answer(message,documents,history)
+            if ai_reply:
+                reply=ai_reply;ai_generated=True
+                if not products and not policy_reply and any(k in normalized for k in ("sach","doc","mua","goi y","tac gia","hay","re")):
+                    row_by_id={str(row["work_id"]):row for row in rows}
+                    semantic_rows=[row_by_id[doc["id"]] for doc in documents if doc["kind"]=="book" and doc["id"] in row_by_id][:3]
+                    if semantic_rows:
+                        products=[{"workId":row["work_id"],"title":row["title"],"authors":row["authors"],"cover":row["cover_url"],"stock":row["stock_quantity"],"price":float(row["promotional_price"] or row["selling_price"])} for row in semantic_rows]
+            else:ai_fallback=True
+        except (requests.RequestException,ValueError,KeyError,TypeError) as error:
+            ai_fallback=True
+            app.logger.warning("Gemini chat fallback: %s",error,exc_info=True)
+    if not actions and not products:actions=[{"label":"Xem toàn bộ sách","url":"/books"}]
+    return jsonify(success=True,data={"message":reply,"products":products,"actions":actions,"rag":{"enabled":bool(os.getenv("GEMINI_API_KEY")),"generated":ai_generated,"fallback":ai_fallback}})
 
 @app.get("/api/orders")
 @api_user()
@@ -1153,10 +1969,12 @@ def admin_generic_create(module):
             if not code or not name or kind not in ("PERCENT","FIXED","FREE_SHIPPING") or (kind!="FREE_SHIPPING" and value<=0) or (kind=="PERCENT" and value>100):return jsonify(success=False,message="Thông tin mã giảm giá không hợp lệ."),422
             work_ids=[str(item).strip() for item in (x.get("workIds") or []) if str(item).strip()]
             if not work_ids:return jsonify(success=False,message="Hãy chọn ít nhất một sản phẩm được áp dụng."),422
+            starts_at=coupon_datetime(x.get("startsAt"));ends_at=coupon_datetime(x.get("endsAt"))
+            if ends_at<=starts_at:return jsonify(success=False,message="Thời gian kết thúc phải sau thời gian bắt đầu."),422
             with con.cursor() as cur:
-                cur.execute("INSERT INTO coupons(code,name,discount_type,discount_value,maximum_discount,minimum_order,usage_limit,usage_per_customer,starts_at,ends_at,status) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",(code,name,kind,value,float(x["maximumDiscount"]) if x.get("maximumDiscount") else None,float(x.get("minimumOrder") or 0),int(x["usageLimit"]) if x.get("usageLimit") else None,int(x.get("usagePerCustomer") or 1),x.get("startsAt"),x.get("endsAt"),x.get("status") or "ACTIVE"));coupon_id=cur.lastrowid
+                cur.execute("INSERT INTO coupons(code,name,discount_type,discount_value,maximum_discount,minimum_order,usage_limit,usage_per_customer,starts_at,ends_at,status) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",(code,name,kind,value,float(x["maximumDiscount"]) if x.get("maximumDiscount") else None,float(x.get("minimumOrder") or 0),int(x["usageLimit"]) if x.get("usageLimit") else None,int(x.get("usagePerCustomer") or 1),starts_at,ends_at,x.get("status") or "ACTIVE"));coupon_id=cur.lastrowid
                 cur.executemany("INSERT INTO external_coupon_products(coupon_id,work_id) VALUES(%s,%s)",[(coupon_id,work_id) for work_id in work_ids])
-            con.commit();return jsonify(success=True),201
+            con.commit();invalidate_home_cache();return jsonify(success=True),201
         except Exception as exc:con.rollback();return jsonify(success=False,message=f"Không thể tạo mã giảm giá: {exc}"),422
         finally:con.close()
     if module=="categories":
@@ -1204,14 +2022,52 @@ def admin_generic_create(module):
 @app.patch("/api/admin/coupons/<int:coupon_id>")
 @api_user("ADMIN")
 def admin_coupon_update(coupon_id):
-    data=request.get_json() or {};status=str(data.get("status") or "").upper()
-    if status not in ("ACTIVE","INACTIVE"):return jsonify(success=False,message="Trạng thái không hợp lệ."),422
+    data=request.get_json() or {};con=db()
+    try:
+        with con.cursor() as cur:
+            cur.execute("SELECT * FROM coupons WHERE id=%s FOR UPDATE",(coupon_id,));current=cur.fetchone()
+            if not current:return jsonify(success=False,message="Không tìm thấy mã giảm giá."),404
+            # The compact status action remains backwards compatible.
+            if set(data.keys())=={"status"}:
+                status=str(data.get("status") or "").upper()
+                if status not in ("ACTIVE","INACTIVE"):return jsonify(success=False,message="Trạng thái không hợp lệ."),422
+                cur.execute("UPDATE coupons SET status=%s WHERE id=%s",(status,coupon_id))
+            else:
+                code=str(data.get("code") or "").strip().upper();name=str(data.get("name") or "").strip()
+                kind=str(data.get("discountType") or "PERCENT").upper();value=float(data.get("discountValue") or 0)
+                if kind=="FREE_SHIPPING":value=1
+                work_ids=list(dict.fromkeys(str(item).strip() for item in (data.get("workIds") or []) if str(item).strip()))
+                if not code or not name or kind not in ("PERCENT","FIXED","FREE_SHIPPING") or (kind!="FREE_SHIPPING" and value<=0) or (kind=="PERCENT" and value>100):return jsonify(success=False,message="Thông tin mã giảm giá không hợp lệ."),422
+                if not work_ids:return jsonify(success=False,message="Hãy chọn ít nhất một sản phẩm được áp dụng."),422
+                status=str(data.get("status") or current["status"]).upper()
+                if status not in ("ACTIVE","INACTIVE"):return jsonify(success=False,message="Trạng thái không hợp lệ."),422
+                starts_at=coupon_datetime(data.get("startsAt"));ends_at=coupon_datetime(data.get("endsAt"))
+                if ends_at<=starts_at:return jsonify(success=False,message="Thời gian kết thúc phải sau thời gian bắt đầu."),422
+                cur.execute("""UPDATE coupons SET code=%s,name=%s,discount_type=%s,discount_value=%s,maximum_discount=%s,minimum_order=%s,usage_limit=%s,usage_per_customer=%s,starts_at=%s,ends_at=%s,status=%s WHERE id=%s""",(code,name,kind,value,float(data["maximumDiscount"]) if data.get("maximumDiscount") else None,float(data.get("minimumOrder") or 0),int(data["usageLimit"]) if data.get("usageLimit") else None,int(data.get("usagePerCustomer") or 1),starts_at,ends_at,status,coupon_id))
+                cur.execute("DELETE FROM external_coupon_products WHERE coupon_id=%s",(coupon_id,))
+                cur.executemany("INSERT INTO external_coupon_products(coupon_id,work_id) VALUES(%s,%s)",[(coupon_id,work_id) for work_id in work_ids])
+        con.commit();invalidate_home_cache();return jsonify(success=True)
+    except pymysql.err.IntegrityError as exc:
+        con.rollback();return jsonify(success=False,message="Mã giảm giá đã tồn tại hoặc sản phẩm không hợp lệ."),409
+    except Exception as exc:
+        con.rollback();return jsonify(success=False,message=f"Không thể cập nhật mã giảm giá: {exc}"),422
+    finally:con.close()
+
+@app.delete("/api/admin/coupons/<int:coupon_id>")
+@api_user("ADMIN")
+def admin_coupon_delete(coupon_id):
     con=db()
     try:
         with con.cursor() as cur:
-            cur.execute("UPDATE coupons SET status=%s WHERE id=%s",(status,coupon_id))
-            if not cur.rowcount:return jsonify(success=False,message="Không tìm thấy mã giảm giá."),404
-        con.commit();return jsonify(success=True)
+            cur.execute("SELECT id,code,used_count FROM coupons WHERE id=%s FOR UPDATE",(coupon_id,));coupon=cur.fetchone()
+            if not coupon:return jsonify(success=False,message="Không tìm thấy mã giảm giá."),404
+            cur.execute("SELECT COUNT(*) total FROM external_orders WHERE coupon_id=%s",(coupon_id,));order_count=cur.fetchone()["total"]
+            if int(coupon["used_count"] or 0)>0 or int(order_count or 0)>0:
+                return jsonify(success=False,message="Mã đã được sử dụng trong đơn hàng nên không thể xóa. Bạn có thể tắt mã để lưu lịch sử."),409
+            cur.execute("DELETE FROM coupons WHERE id=%s",(coupon_id,))
+        con.commit();invalidate_home_cache();return jsonify(success=True,message="Đã xóa mã giảm giá.")
+    except Exception as exc:
+        con.rollback();return jsonify(success=False,message=f"Không thể xóa mã giảm giá: {exc}"),422
     finally:con.close()
 
 @app.patch("/api/admin/entities/<module>/<int:entity_id>")
@@ -1351,9 +2207,9 @@ def admin_orders_workflow():
 def admin_orders_workflow_update(order_id):
     status=str((request.get_json() or {}).get("status") or "").upper()
     transitions={
-        "PENDING":{"CONFIRMED","CANCELLED"},
-        "CONFIRMED":{"PREPARING","CANCELLED"},
-        "PREPARING":{"SHIPPING","CANCELLED"},
+        "PENDING":{"COMPLETED"},
+        "CONFIRMED":{"COMPLETED"},
+        "PREPARING":{"COMPLETED"},
         "SHIPPING":{"COMPLETED"},
         "COMPLETED":set(),
         "CANCELLED":set(),
@@ -1425,4 +2281,230 @@ def update_order(order_id):
             cur.execute("UPDATE external_orders SET status=%s WHERE id=%s",(status,order_id));con.commit();return jsonify(success=True)
     finally:con.close()
 
-if __name__ == "__main__": app.run(host="0.0.0.0",port=3000,debug=False)
+
+@app.get("/api/admin/combos")
+@api_user("ADMIN")
+def admin_get_combos():
+    """List all custom book combos grouped by main book."""
+    con = db()
+    try:
+        with con.cursor() as cur:
+            cur.execute("""
+                SELECT 
+                    c.id, c.main_work_id, c.paired_work_id, c.combo_title, c.discount_percent, c.status, c.created_at,
+                    m.title AS main_title, m.authors AS main_authors, m.cover_url AS main_cover_url,
+                    m.selling_price AS main_price, m.stock_quantity AS main_stock,
+                    p.title AS paired_title, p.authors AS paired_authors, p.cover_url AS paired_cover_url,
+                    p.selling_price AS paired_price, p.stock_quantity AS paired_stock
+                FROM external_book_combos c
+                JOIN external_book_inventory m ON m.work_id = c.main_work_id
+                JOIN external_book_inventory p ON p.work_id = c.paired_work_id
+                ORDER BY c.main_work_id, c.id ASC
+            """)
+            rows = cur.fetchall()
+
+            groups = {}
+            for r in rows:
+                mid = r["main_work_id"]
+                if mid not in groups:
+                    groups[mid] = {
+                        "id": r["id"],
+                        "ids": [r["id"]],
+                        "main_work_id": mid,
+                        "main_title": r["main_title"],
+                        "main_authors": r["main_authors"],
+                        "main_cover_url": r["main_cover_url"],
+                        "main_price": json_value(r["main_price"]),
+                        "main_stock": r["main_stock"],
+                        "combo_title": r["combo_title"],
+                        "discount_percent": r["discount_percent"],
+                        "status": r["status"],
+                        "created_at": json_value(r["created_at"]),
+                        "paired_books": []
+                    }
+                else:
+                    groups[mid]["ids"].append(r["id"])
+
+                groups[mid]["paired_books"].append({
+                    "id": r["id"],
+                    "work_id": r["paired_work_id"],
+                    "title": r["paired_title"],
+                    "authors": r["paired_authors"],
+                    "cover_url": r["paired_cover_url"],
+                    "selling_price": json_value(r["paired_price"]),
+                    "stock_quantity": r["paired_stock"]
+                })
+
+            data = list(groups.values())
+            return jsonify(success=True, data=data)
+    finally:
+        con.close()
+
+@app.post("/api/admin/combos")
+@api_user("ADMIN")
+def admin_create_combo():
+    """Create a new book combo pair or bundle with discount and custom title."""
+    payload = request.get_json(silent=True) or {}
+    main_work_id = str(payload.get("main_work_id") or payload.get("mainWorkId") or "").strip()
+
+    raw_paired = payload.get("paired_work_ids") or payload.get("pairedWorkIds")
+    if isinstance(raw_paired, list):
+        paired_work_ids = [str(x).strip() for x in raw_paired if str(x).strip()]
+    elif payload.get("paired_work_id") or payload.get("pairedWorkId"):
+        paired_work_ids = [str(payload.get("paired_work_id") or payload.get("pairedWorkId")).strip()]
+    else:
+        paired_work_ids = []
+
+    paired_work_ids = [p for p in dict.fromkeys(paired_work_ids) if p != main_work_id]
+
+    combo_title = (payload.get("combo_title") or payload.get("comboTitle") or "").strip() or None
+    try:
+        discount_percent = int(payload.get("discount_percent") or payload.get("discountPercent") or 10)
+    except (ValueError, TypeError):
+        discount_percent = 10
+    discount_percent = max(0, min(90, discount_percent))
+    status = "ACTIVE" if payload.get("status") != "INACTIVE" else "INACTIVE"
+
+    if not main_work_id or not paired_work_ids:
+        return jsonify(success=False, message="Vui lòng chọn Sách chính và ít nhất một Sách đi kèm"), 400
+
+    con = db()
+    try:
+        with con.cursor() as cur:
+            all_ids = [main_work_id] + paired_work_ids
+            format_strings = ','.join(['%s'] * len(all_ids))
+            cur.execute(f"SELECT work_id FROM external_book_inventory WHERE work_id IN ({format_strings})", tuple(all_ids))
+            found = {r["work_id"] for r in cur.fetchall()}
+            if main_work_id not in found:
+                return jsonify(success=False, message="Sách chính không tồn tại trong kho"), 400
+            for pid in paired_work_ids:
+                if pid not in found:
+                    return jsonify(success=False, message=f"Sách đi kèm {pid} không tồn tại trong kho"), 400
+
+            # Delete previous combos for this main_work_id to overwrite cleanly
+            cur.execute("DELETE FROM external_book_combos WHERE main_work_id = %s", (main_work_id,))
+
+            created_ids = []
+            for pid in paired_work_ids:
+                cur.execute("""
+                    INSERT INTO external_book_combos (main_work_id, paired_work_id, combo_title, discount_percent, status)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (main_work_id, pid, combo_title, discount_percent, status))
+                created_ids.append(cur.lastrowid)
+
+            con.commit()
+            return jsonify(success=True, data={"ids": created_ids, "id": created_ids[0]}, message=f"Đã tạo combo trọn bộ {len(paired_work_ids) + 1} cuốn thành công")
+    finally:
+        con.close()
+
+@app.route("/api/admin/combos/<int:combo_id>", methods=["PUT", "PATCH"])
+@api_user("ADMIN")
+def admin_update_combo(combo_id):
+    """Update combo title, discount percentage, status, or paired books."""
+    payload = request.get_json(silent=True) or {}
+    con = db()
+    try:
+        with con.cursor() as cur:
+            cur.execute("SELECT * FROM external_book_combos WHERE id = %s", (combo_id,))
+            combo = cur.fetchone()
+            if not combo:
+                return jsonify(success=False, message="Combo không tồn tại"), 404
+
+            main_work_id = str(payload.get("main_work_id") or combo["main_work_id"]).strip()
+            combo_title = (payload.get("combo_title") or payload.get("comboTitle") or "").strip() or None
+            try:
+                discount_percent = int(payload.get("discount_percent") or payload.get("discountPercent") or combo.get("discount_percent") or 10)
+            except (ValueError, TypeError):
+                discount_percent = 10
+            discount_percent = max(0, min(90, discount_percent))
+            status = payload.get("status") if payload.get("status") in ["ACTIVE", "INACTIVE"] else combo["status"]
+
+            # Check if new paired_work_ids provided
+            raw_paired = payload.get("paired_work_ids") or payload.get("pairedWorkIds")
+            if isinstance(raw_paired, list):
+                paired_work_ids = [str(x).strip() for x in raw_paired if str(x).strip()]
+            elif payload.get("paired_work_id") or payload.get("pairedWorkId"):
+                paired_work_ids = [str(payload.get("paired_work_id") or payload.get("pairedWorkId")).strip()]
+            else:
+                paired_work_ids = []
+
+            paired_work_ids = [p for p in dict.fromkeys(paired_work_ids) if p != main_work_id]
+
+            if paired_work_ids:
+                # Delete all existing rows for this combo's main book and replace with updated set
+                cur.execute("DELETE FROM external_book_combos WHERE main_work_id = %s OR main_work_id = %s", (main_work_id, combo["main_work_id"]))
+                created_ids = []
+                for pid in paired_work_ids:
+                    cur.execute("""
+                        INSERT INTO external_book_combos (main_work_id, paired_work_id, combo_title, discount_percent, status)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (main_work_id, pid, combo_title, discount_percent, status))
+                    created_ids.append(cur.lastrowid)
+                con.commit()
+                return jsonify(success=True, data={"ids": created_ids}, message="Đã cập nhật gói combo thành công")
+            else:
+                # Just update metadata for all rows of this main book
+                cur.execute("""
+                    UPDATE external_book_combos 
+                    SET combo_title = %s, discount_percent = %s, status = %s
+                    WHERE main_work_id = %s
+                """, (combo_title, discount_percent, status, main_work_id))
+                con.commit()
+                return jsonify(success=True, message="Đã cập nhật thông tin combo thành công")
+    finally:
+        con.close()
+
+@app.delete("/api/admin/combos/<int:combo_id>")
+@api_user("ADMIN")
+def admin_delete_combo(combo_id):
+    """Delete a custom book combo bundle."""
+    con = db()
+    try:
+        with con.cursor() as cur:
+            cur.execute("SELECT main_work_id FROM external_book_combos WHERE id = %s", (combo_id,))
+            row = cur.fetchone()
+            if row:
+                cur.execute("DELETE FROM external_book_combos WHERE main_work_id = %s", (row["main_work_id"],))
+            else:
+                cur.execute("DELETE FROM external_book_combos WHERE id = %s", (combo_id,))
+            con.commit()
+            return jsonify(success=True, message="Đã xóa combo thành công")
+    finally:
+        con.close()
+
+
+@app.route("/api/admin/customers/<int:customer_id>/status", methods=["PATCH", "POST"])
+@api_user("ADMIN")
+def admin_toggle_customer_status(customer_id):
+    """Toggle or update customer status: ACTIVE or LOCKED."""
+    payload = request.get_json(silent=True) or {}
+    new_status = payload.get("status")
+    con = db()
+    try:
+        with con.cursor() as cur:
+            cur.execute("SELECT id, status, full_name, email FROM users WHERE id = %s", (customer_id,))
+            user = cur.fetchone()
+            if not user:
+                return jsonify(success=False, message="Khách hàng không tồn tại"), 404
+            
+            if not new_status:
+                new_status = "LOCKED" if user["status"] == "ACTIVE" else "ACTIVE"
+            elif new_status not in ("ACTIVE", "LOCKED", "INACTIVE"):
+                return jsonify(success=False, message="Trạng thái không hợp lệ"), 400
+
+            cur.execute("UPDATE users SET status = %s WHERE id = %s", (new_status, customer_id))
+            con.commit()
+            return jsonify(success=True, data={"status": new_status}, message=f"Đã cập nhật trạng thái khách hàng thành {new_status}")
+    finally:
+        con.close()
+
+if __name__ == "__main__":
+    import socket
+    port = int(os.getenv("PORT", 3000))
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.bind(("0.0.0.0", port))
+        s.close()
+    except OSError:
+        port = 3001
+    app.run(host="0.0.0.0", port=port, debug=False)

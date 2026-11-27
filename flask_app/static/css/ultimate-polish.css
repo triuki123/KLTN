@@ -70,11 +70,11 @@ body {
   box-shadow: 0 8px 28px rgba(191, 80, 50, 0.16), 0 0 0 4px rgba(191, 80, 50, 0.08) !important;
   transform: translateY(-1px);
 }
-.header-search button, .home-search button {
+.header-search > button, .home-search button {
   background: linear-gradient(135deg, #11291f 0%, #224234 100%) !important;
   transition: transform 0.2s, box-shadow 0.2s !important;
 }
-.header-search button:hover, .home-search button:hover {
+.header-search > button:hover, .home-search button:hover {
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(17, 41, 31, 0.3);
 }

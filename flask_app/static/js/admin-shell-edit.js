@@ -1,32 +1,303 @@
-/* Edit controls for every row in the single-pass Books admin screen. */
+/* Modern Slide-out Edit Drawer for Books Admin Screen */
 (() => {
-  if (document.body.dataset.module !== 'books') return;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  const api = async (url, options = {}) => { const response = await fetch(url, {headers:{'Content-Type':'application/json'}, ...options}); const payload=await response.json(); if(!response.ok || !payload.success) throw new Error(payload.message || 'Kh\u00f4ng th\u1ec3 l\u01b0u d\u1eef li\u1ec7u.'); return payload.data; };
-  async function openEdit(book) {
-    document.querySelector('#edit-panel')?.remove();
-    const panel=document.createElement('section'); panel.id='edit-panel'; panel.className='panel form-card mb-4';
-    panel.innerHTML=`<h3>Ch\u1ec9nh s\u1eeda s\u00e1ch: ${esc(book.title)}</h3><form id="edit-form"><div class="row"><label class="col-md-4">M\u00e3 s\u00e1ch<input value="${esc(book.work_id)}" disabled></label><label class="col-md-8">T\u00ean s\u00e1ch *<input name="title" value="${esc(book.title)}" required></label><label class="col-md-6">T\u00e1c gi\u1ea3 *<input name="authors" value="${esc(book.authors)}" required></label><label class="col-md-6">URL \u1ea3nh b\u00eca<input name="coverUrl" value="${esc(book.cover_url || '')}"></label><label class="col-md-4">S\u1ed1 l\u01b0\u1ee3ng t\u1ed3n<input name="stockQuantity" type="number" min="0" value="${book.stock_quantity}" required></label><label class="col-md-4">T\u1ed3n t\u1ed1i thi\u1ec3u<input name="minimumStock" type="number" min="0" value="${book.minimum_stock}" required></label><label class="col-md-4">L\u00fd do thay \u0111\u1ed5i<input name="reason" value="C\u1eadp nh\u1eadt th\u00f4ng tin s\u00e1ch"></label></div><div id="edit-message"></div><button class="btn-brand">L\u01b0u thay \u0111\u1ed5i</button> <button id="close-edit" type="button" class="pill light">H\u1ee7y</button></form>`;
-    document.querySelector('.admin-table').parentElement.before(panel);
-    document.querySelector('#close-edit').onclick=()=>panel.remove();
-    document.querySelector('#edit-form').onsubmit=async event=>{event.preventDefault();try{await api(`/api/admin/data/books/${encodeURIComponent(book.work_id)}`,{method:'PATCH',body:JSON.stringify(Object.fromEntries(new FormData(event.currentTarget)))});document.querySelector('#edit-message').innerHTML='<p class="message">\u0110\u00e3 l\u01b0u thay \u0111\u1ed5i v\u00e0 l\u1ecbch s\u1eed kho.</p>';setTimeout(()=>location.reload(),350)}catch(error){document.querySelector('#edit-message').innerHTML=`<p class="message error">${esc(error.message)}</p>`}};
-  }
-  async function bind() {
-    const table=document.querySelector('.admin-table'); if(!table || table.dataset.editBound) return;
-    table.dataset.editBound='1'; const books=await api('/api/admin/data/books'); const head=table.querySelector('tr'); const actionHead=document.createElement('th');actionHead.textContent='Thao t\u00e1c';head.append(actionHead);
-    [...table.querySelectorAll('tr')].slice(1).forEach((row,index)=>{const cell=document.createElement('td');const button=document.createElement('button');button.className='pill light';button.type='button';button.textContent='Ch\u1ec9nh s\u1eeda';button.onclick=()=>openEdit(books[index]);cell.append(button);row.append(cell)});
-  }
-  const openLibraryPanel = () => {
-    const table=document.querySelector('.admin-table');
-    if(!table || document.querySelector('#openlibrary-import'))return;
-    const panel=document.createElement('section');panel.id='openlibrary-import';panel.className='panel form-card mb-4';
-    panel.innerHTML=`<h3>Lấy sách từ Open Library</h3><p>Tìm sách từ API, rồi nhập số lượng vào kho. Giá và tồn kho được quản lý tại MySQL sau khi nhập.</p><form id="openlibrary-search" class="row"><label class="col-md-8">Tên sách hoặc tác giả<input name="q" required placeholder="Ví dụ: Atomic Habits"></label><label class="col-md-2">Số lượng nhập<input name="quantity" type="number" min="1" value="10" required></label><div class="col-md-2 d-flex align-items-end"><button class="btn-brand w-100">Tìm sách</button></div></form><div id="openlibrary-results" class="mt-3"></div>`;
-    table.parentElement.before(panel);
-    const request=async(url,options={})=>{const response=await fetch(url,{headers:{'Content-Type':'application/json'},...options});const body=await response.json();if(!response.ok||!body.success)throw new Error(body.message||'Không thể xử lý yêu cầu.');return body.data};
-    const showResults=(items,quantity,results)=>{results.innerHTML=`<p class="eyebrow">Danh sách Open Library</p>`+(items||[]).map(book=>`<article class="list-item"><img src="${esc(book.cover||'')}" alt="" onerror="this.hidden=true"><div><b>${esc(book.title)}</b><small>${esc((book.authors||[]).join(', ')||'Chưa rõ tác giả')}</small></div><button class="pill light import-book" type="button" data-id="${esc(book.workId)}" data-title="${esc(book.title)}" data-authors="${esc((book.authors||[]).join(', '))}" data-cover="${esc(book.cover||'')}">Nhập ${quantity} cuốn</button></article>`).join('')||'<p class="message error">Không tìm thấy sách.</p>';results.querySelectorAll('.import-book').forEach(button=>button.onclick=async()=>{button.disabled=true;try{await request('/api/admin/inventory',{method:'POST',body:JSON.stringify({workId:button.dataset.id,title:button.dataset.title,authors:button.dataset.authors,cover:button.dataset.cover,change:quantity,minimumStock:5,reason:'Nhập từ Open Library'})});location.reload()}catch(error){results.insertAdjacentHTML('afterbegin',`<p class="message error">${esc(error.message)}</p>`);button.disabled=false}})};
-    const load=async query=>{const form=panel.querySelector('#openlibrary-search'),results=panel.querySelector('#openlibrary-results'),quantity=Number(form.elements.quantity.value);results.innerHTML='<p class="loading">Đang tải danh sách sách từ API…</p>';try{const data=await request(`/api/books?q=${encodeURIComponent(query)}&limit=8`);showResults(data.items,quantity,results)}catch(error){results.innerHTML=`<p class="message error">${esc(error.message)}</p>`}};
-    panel.querySelector('#openlibrary-search').onsubmit=event=>{event.preventDefault();load(event.currentTarget.elements.q.value.trim())};
-    load('language:vie');
+  const money = value => new Intl.NumberFormat('vi-VN').format(Number(value || 0)) + 'đ';
+
+  const api = async (url, options = {}) => {
+    const response = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options });
+    const payload = await response.json();
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'Không thể lưu dữ liệu.');
+    return payload.data;
   };
-  const observer=new MutationObserver(()=>{bind().catch(console.error);openLibraryPanel()}); observer.observe(document.querySelector('#app'),{childList:true,subtree:true}); bind().catch(()=>{});openLibraryPanel();
+
+  // Toast notification
+  function showToast(msg) {
+    document.querySelectorAll('.admin-toast-float').forEach(el => el.remove());
+    const toast = document.createElement('div');
+    toast.className = 'admin-toast-float';
+    toast.innerHTML = `<span style="color:#34d399;font-size:16px;">✓</span><span>${esc(msg)}</span>`;
+    document.body.append(toast);
+    setTimeout(() => {
+      toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(8px)';
+      setTimeout(() => toast.remove(), 300);
+    }, 2800);
+  }
+
+  let activeRow = null;
+
+  async function openEdit(book) {
+    // Remove any existing drawer
+    document.querySelector('#book-edit-backdrop')?.remove();
+    document.querySelector('#book-edit-drawer')?.remove();
+    document.querySelectorAll('.is-editing-row').forEach(tr => tr.classList.remove('is-editing-row'));
+
+    // Highlight active row in table WITHOUT scrolling
+    activeRow = document.querySelector(`.btn-edit-book[data-work-id="${book.work_id}"]`)?.closest('tr');
+    if (activeRow) activeRow.classList.add('is-editing-row');
+
+    // Create backdrop
+    const backdrop = document.createElement('div');
+    backdrop.id = 'book-edit-backdrop';
+    backdrop.className = 'book-drawer-backdrop';
+    document.body.append(backdrop);
+
+    // Create drawer
+    const drawer = document.createElement('aside');
+    drawer.id = 'book-edit-drawer';
+    drawer.className = 'book-drawer-panel';
+    drawer.setAttribute('role', 'dialog');
+    drawer.setAttribute('aria-modal', 'true');
+
+    drawer.innerHTML = `
+      <div class="book-drawer-header">
+        <div style="min-width:0;">
+          <span class="badge bg-primary mb-1" style="font-size:10.5px;letter-spacing:0.4px;">MÃ SÁCH: ${esc(book.work_id)}</span>
+          <h3 style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Chỉnh sửa: ${esc(book.title)}</h3>
+          <small style="color:#63756a;display:block;">${esc(book.authors)} · Kho hiện tại: <b>${book.stock_quantity || 0} cuốn</b></small>
+        </div>
+        <button type="button" class="book-drawer-close" id="close-book-drawer" title="Đóng (Esc)">✕</button>
+      </div>
+
+      <form id="book-edit-form" class="book-drawer-body">
+        <!-- 1. Thông tin tác phẩm -->
+        <div>
+          <div class="book-drawer-section-title">1. Thông tin tác phẩm</div>
+          <div class="mb-3">
+            <label class="form-label" style="font-weight:600;font-size:12.5px;">Tên sách *</label>
+            <input name="title" class="form-control" value="${esc(book.title)}" required style="border-radius:8px;">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-7">
+              <label class="form-label" style="font-weight:600;font-size:12.5px;">Tác giả *</label>
+              <input name="authors" class="form-control" value="${esc(book.authors)}" required style="border-radius:8px;">
+            </div>
+            <div class="col-5">
+              <label class="form-label" style="font-weight:600;font-size:12.5px;">Mã ISBN</label>
+              <input name="isbn" class="form-control" value="${esc(book.isbn || '')}" style="border-radius:8px;">
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label" style="font-weight:600;font-size:12.5px;">Nhà xuất bản</label>
+              <input name="publisherName" class="form-control" value="${esc(book.publisher_name || '')}" style="border-radius:8px;">
+            </div>
+            <div class="col-3">
+              <label class="form-label" style="font-weight:600;font-size:12.5px;">Năm XB</label>
+              <input name="publicationYear" type="number" class="form-control" value="${esc(book.publication_year || '')}" style="border-radius:8px;">
+            </div>
+            <div class="col-3">
+              <label class="form-label" style="font-weight:600;font-size:12.5px;">Số trang</label>
+              <input name="pageCount" type="number" class="form-control" value="${esc(book.page_count || '')}" style="border-radius:8px;">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-weight:600;font-size:12.5px;">Giới thiệu / Tóm tắt sách</label>
+            <textarea name="description" class="form-control" rows="4" style="border-radius:8px;font-size:12.5px;">${esc(book.description || '')}</textarea>
+          </div>
+        </div>
+
+        <!-- 2. Giá & Tồn kho -->
+        <div>
+          <div class="book-drawer-section-title">2. Giá bán &amp; Tồn kho</div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label" style="font-weight:600;font-size:12.5px;">Giá niêm yết (VNĐ) *</label>
+              <input name="sellingPrice" type="number" min="0" class="form-control" value="${book.selling_price || 99000}" required style="border-radius:8px;">
+            </div>
+            <div class="col-6">
+              <label class="form-label" style="font-weight:600;font-size:12.5px;">Giá khuyến mãi (VNĐ)</label>
+              <input name="promotionalPrice" type="number" min="0" class="form-control" value="${book.promotional_price || ''}" placeholder="Để trống nếu không giảm" style="border-radius:8px;">
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label" style="font-weight:600;font-size:12.5px;">Tồn kho thực tế (cuốn) *</label>
+              <input name="stockQuantity" type="number" min="0" class="form-control" value="${book.stock_quantity ?? 0}" required style="border-radius:8px;">
+            </div>
+            <div class="col-6">
+              <label class="form-label" style="font-weight:600;font-size:12.5px;">Tồn tối thiểu cảnh báo</label>
+              <input name="minimumStock" type="number" min="0" class="form-control" value="${book.minimum_stock ?? 5}" style="border-radius:8px;">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-weight:600;font-size:12.5px;">Lý do điều chỉnh kho</label>
+            <input name="reason" class="form-control" value="Chỉnh sửa thông tin sách" style="border-radius:8px;">
+          </div>
+        </div>
+
+        <!-- 3. Ảnh bìa -->
+        <div>
+          <div class="book-drawer-section-title">3. Ảnh bìa sách</div>
+          <div class="d-flex gap-3 align-items-center">
+            <img id="drawer-cover-img" src="${esc(book.cover_url || '')}" alt="" onerror="this.src='/static/icons/book-placeholder.svg'" style="width:50px;height:70px;object-fit:cover;border-radius:4px;border:1px solid #ddd;flex-shrink:0;">
+            <div class="flex-grow-1">
+              <label class="form-label" style="font-weight:600;font-size:12.5px;">URL ảnh bìa</label>
+              <input name="coverUrl" id="drawer-cover-input" class="form-control" value="${esc(book.cover_url || '')}" placeholder="https://..." style="border-radius:8px;font-size:12px;">
+            </div>
+          </div>
+        </div>
+
+        <div id="drawer-message" class="mt-2"></div>
+      </form>
+
+      <div class="book-drawer-footer">
+        <button type="button" class="btn btn-outline-secondary" id="cancel-book-drawer" style="border-radius:8px;padding:8px 18px;">Hủy (Đóng)</button>
+        <button type="submit" form="book-edit-form" class="btn-brand" id="save-book-drawer" style="border-radius:8px;padding:8px 22px;">✓ Lưu thay đổi</button>
+      </div>
+    `;
+
+    document.body.append(drawer);
+
+    // Open animation
+    requestAnimationFrame(() => {
+      backdrop.classList.add('is-open');
+      drawer.classList.add('is-open');
+    });
+
+    const coverInput = drawer.querySelector('#drawer-cover-input');
+    const coverImg = drawer.querySelector('#drawer-cover-img');
+    if (coverInput && coverImg) {
+      coverInput.addEventListener('input', () => {
+        coverImg.src = coverInput.value.trim() || '/static/icons/book-placeholder.svg';
+      });
+    }
+
+    const closeDrawer = () => {
+      backdrop.classList.remove('is-open');
+      drawer.classList.remove('is-open');
+      if (activeRow) activeRow.classList.remove('is-editing-row');
+      setTimeout(() => {
+        backdrop.remove();
+        drawer.remove();
+      }, 280);
+    };
+
+    drawer.querySelector('#close-book-drawer').onclick = closeDrawer;
+    drawer.querySelector('#cancel-book-drawer').onclick = closeDrawer;
+    backdrop.onclick = closeDrawer;
+
+    // Handle escape key
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        closeDrawer();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+
+    // Handle Form Submit (In-Place Table Update)
+    const form = drawer.querySelector('#book-edit-form');
+    const saveBtn = drawer.querySelector('#save-book-drawer');
+    const msgBox = drawer.querySelector('#drawer-message');
+
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      msgBox.innerHTML = '';
+      saveBtn.disabled = true;
+      const origText = saveBtn.textContent;
+      saveBtn.textContent = 'Đang lưu…';
+
+      const formData = new FormData(form);
+      const payload = Object.fromEntries(formData);
+
+      try {
+        await api(`/api/admin/data/books/${encodeURIComponent(book.work_id)}`, {
+          method: 'PATCH',
+          body: JSON.stringify(payload)
+        });
+
+        // IN-PLACE OPTIMISTIC UPDATE ON TABLE ROW:
+        if (activeRow) {
+          const newTitle = String(payload.title || book.title);
+          const newAuthors = String(payload.authors || book.authors);
+          const newSelling = Number(payload.sellingPrice || book.selling_price || 0);
+          const newPromo = Number(payload.promotionalPrice || 0);
+          const newStock = Number(payload.stockQuantity || 0);
+          const newMin = Number(payload.minimumStock || 0);
+          const newCover = String(payload.coverUrl || book.cover_url || '');
+
+          // Update book meta
+          const h4 = activeRow.querySelector('.book-meta h4');
+          if (h4) h4.textContent = newTitle;
+          const sm = activeRow.querySelector('.book-meta small');
+          if (sm) sm.textContent = newAuthors;
+
+          // Update price cell
+          const priceCell = activeRow.querySelector('.price-cell') || activeRow.querySelector('td:nth-child(3)');
+          if (priceCell) {
+            const hasPromo = newPromo > 0 && newPromo < newSelling;
+            priceCell.innerHTML = hasPromo
+              ? `<span class="promo-price">${money(newPromo)}</span><span class="original-price-strike">${money(newSelling)}</span>`
+              : `<span class="selling-price">${money(newSelling)}</span>`;
+          }
+
+          // Update stock badge
+          const stockCell = activeRow.querySelector('td:nth-child(4)');
+          if (stockCell) {
+            let badgeHtml = '';
+            if (newStock <= 0) badgeHtml = `<span class="stock-badge out-of-stock">Hết hàng</span>`;
+            else if (newStock <= newMin) badgeHtml = `<span class="stock-badge low-stock">Sắp hết (${newStock})</span>`;
+            else badgeHtml = `<span class="stock-badge in-stock">Còn ${newStock}</span>`;
+            stockCell.innerHTML = badgeHtml;
+          }
+
+          // Update min stock
+          const minCell = activeRow.querySelector('td:nth-child(5)');
+          if (minCell) minCell.textContent = newMin;
+
+          // Update cover
+          if (newCover) {
+            const img = activeRow.querySelector('.book-thumb');
+            if (img) img.src = newCover;
+          }
+
+          // Update cached book object
+          Object.assign(book, payload);
+
+          // Flash row highlight
+          activeRow.classList.remove('is-editing-row');
+          activeRow.classList.add('is-updated-row');
+          setTimeout(() => activeRow.classList.remove('is-updated-row'), 2000);
+        }
+
+        // Close drawer smoothly
+        closeDrawer();
+        showToast(`Đã lưu thay đổi sách "${payload.title || book.title}"!`);
+      } catch (err) {
+        msgBox.innerHTML = `<p class="message error" style="color:#dc2626;font-size:12.5px;">${esc(err.message || 'Có lỗi xảy ra khi lưu sách.')}</p>`;
+        saveBtn.disabled = false;
+        saveBtn.textContent = origText;
+      }
+    };
+  }
+
+  window.adminOpenEditBook = openEdit;
+
+  async function bind() {
+    const table = document.querySelector('.admin-table');
+    if (!table || table.dataset.editBound) return;
+    table.dataset.editBound = '1';
+
+    let books = [];
+    try {
+      books = await api('/api/admin/data/books');
+    } catch (_) {}
+
+    document.querySelectorAll('.btn-edit-book').forEach(btn => {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        const id = btn.dataset.workId;
+        const b = books.find(item => item.work_id === id);
+        if (b) openEdit(b);
+      };
+    });
+  }
+
+  const observer = new MutationObserver(() => {
+    bind().catch(console.error);
+  });
+  observer.observe(document.querySelector('#app'), { childList: true, subtree: true });
+  bind().catch(() => {});
 })();
