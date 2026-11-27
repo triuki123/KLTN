@@ -174,21 +174,36 @@
       <span>T&#224;i kho&#7843;n</span>
     </a>
   </nav>
-  <script src="{{ url_for('static', filename='js/header-experience.js') }}?v=20261022-001"></script>
-  <script src="{{ url_for('static', filename='js/ux-flow.js') }}?v=20261006-1"></script>
-  <script src="{{ url_for('static', filename='js/cart-drawer.js') }}?v=20261006-006"></script>
-  {% if page not in ['detail', 'home', 'checkout', 'favorites', 'books', 'categories', 'orders', 'account'] %}<script src="{{ url_for('static', filename='js/app.js') }}?v=20261007-001"></script>{% endif %}
-  {% if page == 'favorites' %}<script src="{{ url_for('static', filename='js/favorites-experience.js') }}?v=20261006-003"></script>{% endif %}
-  {% if page == 'detail' %}<script src="{{ url_for('static', filename='js/detail-page-v3.js') }}?v=20261127-003"></script>{% endif %}
-  <script src="{{ url_for('static', filename='js/chat-widget-v2.js') }}?v=20260924-001"></script>
-  {% if page == 'admin' %}<script src="{{ url_for('static', filename='js/admin-orders-collapse.js') }}?v=20260915-300"></script>{% endif %}
-  {% if page == 'home' %}<script src="{{ url_for('static', filename='js/home-page-v2.js') }}?v=20261127-002"></script>{% endif %}
-  {% if page == 'cart' %}<script src="{{ url_for('static', filename='js/cart-summary.js') }}?v=20261007-001"></script>{% endif %}
-  {% if page == 'orders' %}<script src="{{ url_for('static', filename='js/orders-workflow.js') }}?v=20260915-300"></script>{% endif %}
-{% endif %}
-{% if page in ['login', 'register', 'forgot-password', 'reset-password'] %}
-  <script src="{{ url_for('static', filename='js/app.js') }}?v=20261007-001"></script>
-  <script src="{{ url_for('static', filename='js/password-recovery.js') }}?v=20261127-001"></script>
-{% endif %}
+  <script src="{{ url_for('static', filename='js/header-experience.js') }}?v=20261022-001"></script>
+
+
+  <script src="{{ url_for('static', filename='js/cart-drawer.js') }}?v=20261006-006"></script>
+
+  {% if page not in ['detail', 'home', 'checkout', 'favorites', 'books', 'categories', 'orders', 'account'] %}<script src="{{ url_for('static', filename='js/app.js') }}?v=20261007-001"></script>{% endif %}
+
+  {% if page == 'favorites' %}<script src="{{ url_for('static', filename='js/favorites-experience.js') }}?v=20261006-003"></script>{% endif %}
+
+  {% if page == 'detail' %}<script src="{{ url_for('static', filename='js/detail-page-v3.js') }}?v=20261127-003"></script>{% endif %}
+
+  <script src="{{ url_for('static', filename='js/chat-widget-v2.js') }}?v=20260924-001"></script>
+
+  {% if page == 'admin' %}<script src="{{ url_for('static', filename='js/admin-orders-collapse.js') }}?v=20260915-300"></script>{% endif %}
+
+  {% if page == 'home' %}<script src="{{ url_for('static', filename='js/home-page-v2.js') }}?v=20261127-002"></script>{% endif %}
+
+  {% if page == 'cart' %}<script src="{{ url_for('static', filename='js/cart-summary.js') }}?v=20261007-001"></script>{% endif %}
+
+  {% if page == 'orders' %}<script src="{{ url_for('static', filename='js/orders-workflow.js') }}?v=20260915-300"></script>{% endif %}
+
+{% endif %}
+
+{% if page in ['login', 'register', 'forgot-password', 'reset-password'] %}
+
+  <script src="{{ url_for('static', filename='js/app.js') }}?v=20261007-001"></script>
+
+  <script src="{{ url_for('static', filename='js/password-recovery.js') }}?v=20261127-001"></script>
+
+{% endif %}
+
 </body>
 </html>
