@@ -1,1 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Trạm Sách"><rect width="64" height="64" rx="14" fill="#F7F3E9"/><path d="M13 52V27L34 9M23 52V28L37 15M33 52V30l7-9" fill="none" stroke="#173D2E" stroke-width="6" stroke-linecap="round"/><path d="m40 10 18 13M43 18l17 12" fill="none" stroke="#C65A3A" stroke-width="5" stroke-linecap="round"/><path d="M13 50C8 41 4 37 1 36c0 8 4 12 12 14Zm3-12c1-10 5-16 12-19-1 9-5 15-12 19Z" fill="#173D2E"/><path d="M47 25c-3 5-3 10 0 14v4" fill="none" stroke="#C65A3A" stroke-width="2"/><path d="M41 42h12l-3 6h-6Z" fill="#C65A3A"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="16" fill="#1F3D2E"/>
+  <path d="M16 19c0-2.2 1.8-4 4-4h9c2.2 0 4 1.8 4 4v28c-2.5-1.5-5.5-2-9-2h-4c-2.2 0-4-1.8-4-4V19z" fill="#FAF8F4"/>
+  <path d="M48 19c0-2.2-1.8-4-4-4h-9c-2.2 0-4 1.8-4 4v28c2.5-1.5 5.5-2 9-2h4c2.2 0 4-1.8 4-4V19z" fill="#EDE7DC"/>
+  <path d="M32 15v32" stroke="#1F3D2E" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M39 15h6v17l-3-2.5L39 32V15z" fill="#C65A3A"/>
+</svg>
