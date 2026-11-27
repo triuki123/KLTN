@@ -17,11 +17,19 @@
   align-items: center;
 }
 
-.site-header .brand-logo-img {
+.site-header .brand picture {
+  display: flex;
+  align-items: center;
   max-width: 100%;
+}
+
+.site-header .brand-logo-img {
+  width: 100%;
+  max-width: 196px;
   height: auto;
   max-height: 46px;
   object-fit: contain;
+  display: block;
 }
 
 .site-header nav {
