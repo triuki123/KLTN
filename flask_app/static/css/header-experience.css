@@ -1270,3 +1270,8 @@
   transform: translateY(-1px) !important;
   box-shadow: 0 4px 10px rgba(17, 41, 31, 0.15) !important;
 }
+
+/* Giữ nguyên căn giữa dọc khi hover nút xóa tìm kiếm */
+.header-search-clear:hover {
+  transform: translateY(-50%) !important;
+}
