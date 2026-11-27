@@ -78,14 +78,18 @@
 
 .header-search > button,
 .header-search button[type="submit"] {
-  width: 35px;
-  height: 35px;
-  flex: 0 0 35px;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  padding: 0 !important;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 34px;
   border: 0;
   border-radius: 50%;
   background: #11291f;
   color: #fff;
-  font-size: 19px;
+  font-size: 17px;
   line-height: 1;
   cursor: pointer;
   display: inline-flex;
