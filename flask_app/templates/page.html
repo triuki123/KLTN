@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if page == 'admin-login' %}Đăng nhập quản trị &middot; {% endif %}Trạm Sách</title>
+  <title>{% if page == 'admin-login' %}Đăng nhập quản trị &middot; {% elif page == 'login' %}Đăng nhập &middot; {% elif page == 'register' %}Đăng ký &middot; {% endif %}Trạm Sách</title>
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/favicon.svg') }}?v=20260925-4">
   <meta name="theme-color" content="#1F3D2E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,15 +37,17 @@
   {% if page == 'detail' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/detail-actions.css') }}?v=20261127-003">{% endif %}
   {% if page == 'favorites' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/favorites-experience.css') }}?v=20261006-003">{% endif %}
   {% if page == 'admin-login' %}<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-login.css') }}?v=20260915-400">{% endif %}
-  {% if page in ['login', 'forgot-password', 'reset-password'] %}<link rel="stylesheet" href="{{ url_for('static', filename='css/password-recovery.css') }}?v=20260915-400">{% endif %}
+  {% if page in ['login', 'register', 'forgot-password', 'reset-password'] %}<link rel="stylesheet" href="{{ url_for('static', filename='css/password-recovery.css') }}?v=20261127-002">{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive-overhaul.css') }}?v=20261110-001">
 </head>
-<body class="{% if page == 'admin-login' %}admin-login-body{% endif %}" data-page="{{ page }}" data-work-id="{{ work_id|default('') }}" data-module="{{ module|default('') }}">
+<body class="{% if page == 'admin-login' %}admin-login-body{% elif page in ['login','register','forgot-password','reset-password'] %}auth-page-body{% endif %}" data-page="{{ page }}" data-work-id="{{ work_id|default('') }}" data-module="{{ module|default('') }}">
 {% if page == 'admin-login' %}
   <main id="app" class="admin-login-page" aria-live="polite">
     <div class="loading">&#272;ang t&#7843;i m&#224;n h&#236;nh &#273;&#259;ng nh&#7853;p&hellip;</div>
   </main>
   <script src="{{ url_for('static', filename='js/admin-login.js') }}"></script>
+{% elif page in ['login','register','forgot-password','reset-password'] %}
+  <main id="app" class="auth-page-wrap" aria-live="polite"></main>
 {% else %}
   <div class="announcement">Mi&#7877;n ph&#237; v&#7853;n chuy&#7875;n cho &#273;&#417;n t&#7915; 299.000&#273; &middot; &#272;&#7893;i tr&#7843; trong 7 ng&#224;y</div>
   <header class="site-header">
@@ -172,18 +174,21 @@
       <span>T&#224;i kho&#7843;n</span>
     </a>
   </nav>
-  <script src="{{ url_for('static', filename='js/header-experience.js') }}?v=20261022-001"></script>
-  <script src="{{ url_for('static', filename='js/ux-flow.js') }}?v=20261006-1"></script>
-  <script src="{{ url_for('static', filename='js/cart-drawer.js') }}?v=20261006-006"></script>
-  {% if page not in ['detail', 'home', 'checkout', 'favorites', 'books', 'categories', 'orders', 'account'] %}<script src="{{ url_for('static', filename='js/app.js') }}?v=20261007-001"></script>{% endif %}
-  {% if page == 'favorites' %}<script src="{{ url_for('static', filename='js/favorites-experience.js') }}?v=20261006-003"></script>{% endif %}
-  {% if page == 'detail' %}<script src="{{ url_for('static', filename='js/detail-page-v3.js') }}?v=20261127-003"></script>{% endif %}
-  <script src="{{ url_for('static', filename='js/chat-widget-v2.js') }}?v=20260924-001"></script>
-  {% if page == 'admin' %}<script src="{{ url_for('static', filename='js/admin-orders-collapse.js') }}?v=20260915-300"></script>{% endif %}
-  {% if page == 'home' %}<script src="{{ url_for('static', filename='js/home-page-v2.js') }}?v=20261127-002"></script>{% endif %}
-  {% if page == 'cart' %}<script src="{{ url_for('static', filename='js/cart-summary.js') }}?v=20261007-001"></script>{% endif %}
-  {% if page == 'orders' %}<script src="{{ url_for('static', filename='js/orders-workflow.js') }}?v=20260915-300"></script>{% endif %}
-  {% if page in ['login', 'forgot-password', 'reset-password'] %}<script src="{{ url_for('static', filename='js/password-recovery.js') }}?v=20260915-300"></script>{% endif %}
-{% endif %}
+  <script src="{{ url_for('static', filename='js/header-experience.js') }}?v=20261022-001"></script>
+  <script src="{{ url_for('static', filename='js/ux-flow.js') }}?v=20261006-1"></script>
+  <script src="{{ url_for('static', filename='js/cart-drawer.js') }}?v=20261006-006"></script>
+  {% if page not in ['detail', 'home', 'checkout', 'favorites', 'books', 'categories', 'orders', 'account'] %}<script src="{{ url_for('static', filename='js/app.js') }}?v=20261007-001"></script>{% endif %}
+  {% if page == 'favorites' %}<script src="{{ url_for('static', filename='js/favorites-experience.js') }}?v=20261006-003"></script>{% endif %}
+  {% if page == 'detail' %}<script src="{{ url_for('static', filename='js/detail-page-v3.js') }}?v=20261127-003"></script>{% endif %}
+  <script src="{{ url_for('static', filename='js/chat-widget-v2.js') }}?v=20260924-001"></script>
+  {% if page == 'admin' %}<script src="{{ url_for('static', filename='js/admin-orders-collapse.js') }}?v=20260915-300"></script>{% endif %}
+  {% if page == 'home' %}<script src="{{ url_for('static', filename='js/home-page-v2.js') }}?v=20261127-002"></script>{% endif %}
+  {% if page == 'cart' %}<script src="{{ url_for('static', filename='js/cart-summary.js') }}?v=20261007-001"></script>{% endif %}
+  {% if page == 'orders' %}<script src="{{ url_for('static', filename='js/orders-workflow.js') }}?v=20260915-300"></script>{% endif %}
+{% endif %}
+{% if page in ['login', 'register', 'forgot-password', 'reset-password'] %}
+  <script src="{{ url_for('static', filename='js/app.js') }}?v=20261007-001"></script>
+  <script src="{{ url_for('static', filename='js/password-recovery.js') }}?v=20261127-001"></script>
+{% endif %}
 </body>
 </html>
