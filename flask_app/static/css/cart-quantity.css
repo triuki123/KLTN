@@ -5,5 +5,5 @@
 .cart-quantity button:first-child{border-radius:99px 0 0 99px}
 .cart-quantity button:nth-of-type(2){border-radius:0 99px 99px 0}
 .cart-quantity button:disabled{cursor:not-allowed;opacity:.35}
-.cart-quantity>b{display:grid;place-items:center;min-width:38px;height:36px;border-block:1.5px solid var(--line-strong, #11291f35);background:#fff;font-size:14px;color:var(--brown-dark, #3A2F27)}
+.cart-quantity>b{display:inline-flex !important;align-items:center !important;justify-content:center !important;min-width:38px;height:36px;padding:0 !important;line-height:1 !important;border-block:1.5px solid var(--line-strong, #11291f35);background:#fff;font-size:14px;color:var(--brown-dark, #3A2F27)}
 .cart-quantity>strong{margin-left:14px;color:#176a45;font-size:15px;font-weight:700}
