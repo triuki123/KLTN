@@ -859,14 +859,18 @@ def admin_wishlist_reports():
     con = db()
     try:
         with con.cursor() as cur:
-            cur.execute("""SELECT i.work_id, COALESCE(inv.title, i.title) title, COALESCE(inv.authors, i.authors) authors,
-                COALESCE(inv.cover_url, i.cover_url) cover_url, COALESCE(inv.stock_quantity, 0) stock_quantity,
-                COALESCE(inv.selling_price, i.unit_price) selling_price,
+            # Aggregate non-key columns so MySQL ONLY_FULL_GROUP_BY accepts GROUP BY i.work_id
+            cur.execute("""SELECT i.work_id,
+                MAX(COALESCE(inv.title, i.title)) title,
+                MAX(COALESCE(inv.authors, i.authors)) authors,
+                MAX(COALESCE(inv.cover_url, i.cover_url)) cover_url,
+                MAX(COALESCE(inv.stock_quantity, 0)) stock_quantity,
+                MAX(COALESCE(inv.selling_price, i.unit_price)) selling_price,
                 COUNT(i.id) favorite_count
                 FROM external_book_items i
                 LEFT JOIN external_book_inventory inv ON inv.work_id=i.work_id
                 WHERE i.kind='FAVORITE'
-                GROUP BY i.work_id, title, authors, cover_url, stock_quantity, selling_price
+                GROUP BY i.work_id
                 ORDER BY favorite_count DESC, stock_quantity ASC LIMIT 20""")
             rows = cur.fetchall()
             return jsonify(success=True, data=[{k: json_value(v) for k, v in r.items()} for r in rows])
