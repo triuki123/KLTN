@@ -392,3 +392,36 @@
 }
 
 
+
+/* Responsive fixes for /cart */
+@media (max-width: 900px) {
+  .cart-two-col {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 600px) {
+  .cart-select-all-bar {
+    padding: 12px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .cards .list-item.has-cart-selection {
+    grid-template-columns: 24px 56px minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px;
+  }
+  .cards .list-item.has-cart-selection > button.pill {
+    grid-column: 3;
+    justify-self: start;
+    margin-top: 4px;
+  }
+  .cart-quantity {
+    flex-wrap: wrap;
+    gap: 6px 0;
+  }
+  .cart-quantity > strong {
+    margin-left: 10px;
+  }
+}
