@@ -22,8 +22,8 @@ Mở <http://localhost:3000>. Ở lần chạy đầu, Docker tự động:
 Tài khoản quản trị mặc định:
 
 - URL: <http://localhost:3000/admin/login>
-- Email: `admin@tramsach.local`
-- Mật khẩu: `TramSach@123`
+- Email: `admin@thuphong.vn`
+- Mật khẩu: `admin123`
 
 Đây chỉ là thông tin dùng cho máy local. Hãy đổi `ADMIN_EMAIL` và `ADMIN_PASSWORD` trong `.env` trước khi chia sẻ môi trường hoặc triển khai thật.
 
